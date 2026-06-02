@@ -1,0 +1,8 @@
+# 「联盟数据包获取」运行依赖
+# 安装:pip install -r requirements.txt
+
+flet           # 桌面 GUI 框架(src/ 全部界面)
+requests       # 数据包下载与官方版本查询(src/core/downloader.py)
+
+# 以下仅图标生成脚本 scripts/convert_icon.py 需要,运行主程序不必安装
+Pillow

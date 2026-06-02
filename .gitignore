@@ -1,0 +1,25 @@
+# Python 编译缓存
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# 虚拟环境
+venv/
+.venv/
+env/
+
+# PyInstaller 打包产物(可由 build_config/*.spec 重新生成)
+build/
+dist/
+
+# 运行时下载的数据包(默认生成在用户 Downloads,此处为防御性忽略)
+*.tgz
+联盟官方数据包*/
+*汉化整理*/
+
+# 操作系统 / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
