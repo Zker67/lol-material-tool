@@ -47,3 +47,18 @@ pub const STATMODS_MAPPING: &[(&str, &str)] = &[
     ("StatModsAdaptiveForceScalingIcon.png", "属性点 成长适应之力.png"),
     ("StatModsAdaptiveForceIcon.png", "属性点 适应之力.png"),
 ];
+
+/// 云顶汉化输出目录名前缀,完整为 `云顶数据汉化整理-{version}`。
+pub const TFT_LOCALIZED_PREFIX: &str = "云顶数据汉化整理";
+
+/// 云顶汉化各类配置:`(zh_CN JSON 文件名, 中文子目录名, img 子目录名/组覆盖)`。
+/// 注意 JSON 文件名与 img 组名不完全一致(augments→augment、portals→portal)。
+pub const TFT_LOCALIZATION_CONFIG: &[(&str, &str, &str)] = &[
+    ("tft-arena.json", "棋盘皮肤", "tft-arena"),
+    ("tft-augments.json", "海克斯强化", "tft-augment"),
+    ("tft-champion.json", "弈子", "tft-champion"),
+    ("tft-item.json", "装备", "tft-item"),
+    ("tft-tactician.json", "小小英雄", "tft-tactician"),
+    ("tft-trait.json", "羁绊", "tft-trait"),
+    ("tft-region-portals.json", "地区传送门", "tft-region-portal"),
+];

@@ -31,6 +31,11 @@ export function runLolLocalization(dataDir: string): Promise<string> {
   return invoke<string>("run_lol_localization", { dataDir });
 }
 
+/** 对已解压的官方数据包目录执行云顶汉化,返回汉化输出目录路径 */
+export function runTftLocalization(dataDir: string): Promise<string> {
+  return invoke<string>("run_tft_localization", { dataDir });
+}
+
 /** 请求取消当前任务 */
 export function cancelTask(): Promise<void> {
   return invoke("cancel_task");

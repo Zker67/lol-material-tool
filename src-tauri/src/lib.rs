@@ -49,6 +49,7 @@ pub fn run() {
             download::download_pack,
             extract::extract_pack,
             localize::run_lol_localization,
+            localize::run_tft_localization,
             cancel_task
         ])
         .run(tauri::generate_context!())

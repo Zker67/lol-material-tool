@@ -555,6 +555,127 @@ pub async fn run_lol_localization(
 }
 
 // ---------------------------------------------------------------------------
+// 云顶(TFT)汉化
+// ---------------------------------------------------------------------------
+
+/// 从 TFT JSON 根提取待处理条目:`data` 为数组直接用;为对象取其 values;
+/// 若仍为空且存在 `sets`,则取各 set 的 `champions`(tft-champion 的分组结构)。
+fn collect_tft_items(raw: &Value) -> Vec<&Value> {
+    let data_val = raw.get("data");
+    let mut items: Vec<&Value> = if let Some(arr) = data_val.and_then(|d| d.as_array()) {
+        arr.iter().collect()
+    } else if let Some(obj) = data_val.and_then(|d| d.as_object()) {
+        obj.values().collect()
+    } else {
+        Vec::new()
+    };
+    if items.is_empty() {
+        if let Some(sets) = raw.get("sets").and_then(|s| s.as_object()) {
+            items = sets
+                .values()
+                .filter_map(|s| s.get("champions").and_then(|c| c.as_array()))
+                .flatten()
+                .collect();
+        }
+    }
+    items
+}
+
+/// 处理单个 TFT 类别:读取 zh_CN/{json},按 name 把 `img/{img_group}/{image.full}`
+/// 复制为 `{中文类名}/{name}.png`。
+fn process_tft_json(
+    json_file: &str,
+    target_folder: &str,
+    img_group: &str,
+    ver_root: &Path,
+    tft_out: &Path,
+) -> Result<(), String> {
+    let json_path = ver_root.join("data").join("zh_CN").join(json_file);
+    if !json_path.is_file() {
+        return Ok(());
+    }
+    let raw = load_json(&json_path)?;
+    let items = collect_tft_items(&raw);
+    if items.is_empty() {
+        return Ok(());
+    }
+    let dest_folder = tft_out.join(target_folder);
+    fs::create_dir_all(&dest_folder).map_err(|e| format!("创建 {target_folder} 目录失败:{e}"))?;
+    let img_group = img_group.trim_matches('/');
+
+    for item in items {
+        let obj = match item.as_object() {
+            Some(o) => o,
+            None => continue,
+        };
+        let name = obj.get("name").and_then(|v| v.as_str()).unwrap_or("");
+        if name.is_empty() {
+            continue;
+        }
+        let img_full = match obj
+            .get("image")
+            .and_then(|im| im.get("full"))
+            .and_then(|v| v.as_str())
+        {
+            Some(f) if !f.is_empty() => f,
+            _ => continue,
+        };
+        let src = ver_root.join("img").join(img_group).join(img_full);
+        if src.is_file() {
+            copy_overwrite(&src, &dest_folder.join(format!("{}.png", sanitize(name))));
+        }
+    }
+    Ok(())
+}
+
+/// 云顶汉化主流程(同步,运行在阻塞线程池中)。
+fn localize_tft(
+    app: &AppHandle,
+    cancel: &Arc<AtomicBool>,
+    data_dir: &Path,
+) -> Result<String, String> {
+    let version = detect_version(data_dir).ok_or_else(|| {
+        format!(
+            "未在 {} 找到有效数据(需含 x.y.z/data 与 x.y.z/img)",
+            data_dir.display()
+        )
+    })?;
+    emit_localize(app, 0, &format!("开始云顶汉化(版本 {version})…"), false);
+
+    let target_root = data_dir.parent().unwrap_or(data_dir);
+    let out_root = target_root.join(format!("{TFT_LOCALIZED_PREFIX}-{version}"));
+    fs::create_dir_all(&out_root).map_err(|e| format!("创建输出目录失败:{e}"))?;
+    let ver_root = data_dir.join(&version);
+
+    let total = TFT_LOCALIZATION_CONFIG.len() as u64;
+    for (i, &(json_file, target_folder, img_group)) in TFT_LOCALIZATION_CONFIG.iter().enumerate() {
+        check_cancel(cancel)?;
+        emit_localize(app, (i as u64 * 100) / total, &format!("正在处理:{target_folder}…"), false);
+        process_tft_json(json_file, target_folder, img_group, &ver_root, &out_root)?;
+    }
+
+    emit_localize(app, 100, "云顶汉化完成", true);
+    Ok(out_root.to_string_lossy().into_owned())
+}
+
+/// 对已解压的官方数据包目录执行云顶汉化,返回汉化输出目录路径。
+#[tauri::command]
+pub async fn run_tft_localization(
+    app: AppHandle,
+    state: State<'_, CancelFlag>,
+    data_dir: String,
+) -> Result<String, String> {
+    state.0.store(false, Ordering::SeqCst);
+    let cancel = state.0.clone();
+    let data_dir = PathBuf::from(data_dir);
+
+    let result = tokio::task::spawn_blocking(move || localize_tft(&app, &cancel, &data_dir))
+        .await
+        .map_err(|e| format!("汉化任务异常:{e}"))?;
+    result
+}
+
+// ---------------------------------------------------------------------------
 // 单元测试
 // ---------------------------------------------------------------------------
 
@@ -610,5 +731,26 @@ mod tests {
         let info2 = serde_json::json!({"name":"X","title":"Y","skins":[{"num":2,"name":"default"}]});
         assert_eq!(compute_skin_file_base(&info2, 2, "X", "Y"), Some("X Y".into()));
         assert_eq!(compute_skin_file_base(&info2, 99, "X", "Y"), None);
+    }
+
+    #[test]
+    fn tft_items_from_data_list() {
+        let raw = serde_json::json!({"data": [{"name":"a"},{"name":"b"}]});
+        assert_eq!(collect_tft_items(&raw).len(), 2);
+    }
+
+    #[test]
+    fn tft_items_from_data_dict() {
+        let raw = serde_json::json!({"data": {"X":{"name":"a"},"Y":{"name":"b"}}});
+        assert_eq!(collect_tft_items(&raw).len(), 2);
+    }
+
+    #[test]
+    fn tft_items_from_sets() {
+        let raw = serde_json::json!({
+            "data": {},
+            "sets": {"10":{"champions":[{"name":"a"}]},"11":{"champions":[{"name":"b"},{"name":"c"}]}}
+        });
+        assert_eq!(collect_tft_items(&raw).len(), 3);
     }
 }

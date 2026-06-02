@@ -5,7 +5,7 @@ import { FolderOpen, Download, X, Loader2, Languages } from "lucide-react";
 import { TitleBar } from "./components/TitleBar";
 import { HextechProgressBar } from "./components/HextechProgressBar";
 import { useTaskProgress } from "./hooks/useTaskProgress";
-import { listVersions, downloadPack, extractPack, runLolLocalization, cancelTask } from "./lib/api";
+import { listVersions, downloadPack, extractPack, runLolLocalization, runTftLocalization, cancelTask } from "./lib/api";
 import { formatBytes, formatSpeed, formatEta } from "./lib/utils";
 
 function App() {
@@ -65,18 +65,18 @@ function App() {
     if (resultDir) await openPath(resultDir);
   };
 
-  const localize = async () => {
+  const runLocalize = async (label: string, fn: (d: string) => Promise<string>) => {
     if (!resultDir) return;
     setBusy(true);
     setLocalizedDir(null);
     reset();
     try {
-      addLog("开始联盟汉化 …");
-      const out = await runLolLocalization(resultDir);
-      addLog(`汉化完成:${out}`);
+      addLog(`开始${label} …`);
+      const out = await fn(resultDir);
+      addLog(`${label}完成:${out}`);
       setLocalizedDir(out);
     } catch (e) {
-      addLog(`汉化失败:${e}`);
+      addLog(`${label}失败:${e}`);
     } finally {
       setBusy(false);
     }
@@ -162,10 +162,18 @@ function App() {
             )}
             {resultDir && !busy && (
               <button
-                onClick={localize}
+                onClick={() => runLocalize("联盟汉化", runLolLocalization)}
                 className="flex items-center gap-2 px-5 py-2.5 bg-hex-blue-dark/50 border border-hex-blue text-hex-blue font-semibold hover:bg-hex-blue-dark transition-colors"
               >
-                <Languages size={18} /> 开始汉化
+                <Languages size={18} /> 联盟汉化
+              </button>
+            )}
+            {resultDir && !busy && (
+              <button
+                onClick={() => runLocalize("云顶汉化", runTftLocalization)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-hex-blue-dark/50 border border-hex-blue text-hex-blue font-semibold hover:bg-hex-blue-dark transition-colors"
+              >
+                <Languages size={18} /> 云顶汉化
               </button>
             )}
             {resultDir && !busy && (
