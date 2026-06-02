@@ -1,25 +1,41 @@
-# Python 编译缓存
+# === 依赖与构建产物 (Node / Tauri) ===
+node_modules
+dist
+dist-ssr
+*.local
+
+# Tauri / Rust 构建产物
+/src-tauri/target/
+# Tauri 自动生成的 schema
+/src-tauri/gen/schemas/
+
+# === Python(legacy/ 冻结存档,防御性忽略) ===
 __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
-
-# 虚拟环境
 venv/
 .venv/
 env/
 
-# PyInstaller 打包产物(可由 build_config/*.spec 重新生成)
-build/
-dist/
-
-# 运行时下载的数据包(默认生成在用户 Downloads,此处为防御性忽略)
+# === 运行时下载的数据包(默认生成在用户 Downloads,防御性忽略) ===
 *.tgz
 联盟官方数据包*/
 *汉化整理*/
 
-# 操作系统 / IDE
+# === 日志 ===
+logs
+*.log
+npm-debug.log*
+
+# === AI 协作与本地工具配置(开源无关) ===
+.ai_memory/
+.claude/
+
+# === 操作系统 / 编辑器 ===
 .DS_Store
 Thumbs.db
-.vscode/
+.vscode/*
+!.vscode/extensions.json
 .idea/
+*.sw?

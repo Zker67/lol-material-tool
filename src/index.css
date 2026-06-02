@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    @apply bg-hex-bg text-hex-text font-sans;
+    overflow: hidden;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* 输入区域允许选中文本 */
+  input,
+  textarea,
+  [contenteditable="true"] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+
+@layer utilities {
+  /* Hextech 风格滚动条 */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-hex-bg-2;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-hex-gold-dark;
+    border: 2px solid #0a1428;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-hex-gold;
+  }
+}

@@ -1,0 +1,29 @@
+[package]
+name = "lol-material-tool"
+version = "0.1.0"
+description = "英雄联盟/云顶之弈官方素材一键获取工具"
+authors = ["zker67"]
+edition = "2021"
+
+[lib]
+# `_lib` 后缀避免与 bin 同名冲突(Windows 上的已知问题)
+name = "lol_material_tool_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+
+# HTTP 流式下载 / gzip+tar 解压
+reqwest = { version = "0.12", features = ["json", "stream"] }
+flate2 = "1"
+tar = "0.4"
+futures-util = "0.3"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "io-util"] }
