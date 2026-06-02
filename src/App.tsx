@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openPath } from "@tauri-apps/plugin-opener";
-import { FolderOpen, Download, X, Loader2 } from "lucide-react";
+import { FolderOpen, Download, X, Loader2, Languages } from "lucide-react";
 import { TitleBar } from "./components/TitleBar";
 import { HextechProgressBar } from "./components/HextechProgressBar";
 import { useTaskProgress } from "./hooks/useTaskProgress";
-import { listVersions, downloadPack, extractPack, cancelTask } from "./lib/api";
+import { listVersions, downloadPack, extractPack, runLolLocalization, cancelTask } from "./lib/api";
 import { formatBytes, formatSpeed, formatEta } from "./lib/utils";
 
 function App() {
@@ -15,6 +15,7 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [resultDir, setResultDir] = useState<string | null>(null);
+  const [localizedDir, setLocalizedDir] = useState<string | null>(null);
   const { progress, reset } = useTaskProgress();
 
   const addLog = (msg: string) => setLogs((prev) => [...prev, msg]);
@@ -38,13 +39,14 @@ function App() {
     if (!destDir) return addLog("请先选择保存目录");
     setBusy(true);
     setResultDir(null);
+    setLocalizedDir(null);
     reset();
     try {
       addLog(`开始下载 ${version} …`);
       const tgz = await downloadPack(version, destDir);
       addLog(`下载完成:${tgz}`);
       addLog("开始解压 …");
-      const out = await extractPack(tgz, destDir);
+      const out = await extractPack(tgz, destDir, version);
       addLog(`解压完成:${out}`);
       setResultDir(out);
     } catch (e) {
@@ -63,8 +65,31 @@ function App() {
     if (resultDir) await openPath(resultDir);
   };
 
+  const localize = async () => {
+    if (!resultDir) return;
+    setBusy(true);
+    setLocalizedDir(null);
+    reset();
+    try {
+      addLog("开始联盟汉化 …");
+      const out = await runLolLocalization(resultDir);
+      addLog(`汉化完成:${out}`);
+      setLocalizedDir(out);
+    } catch (e) {
+      addLog(`汉化失败:${e}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openLocalized = async () => {
+    if (localizedDir) await openPath(localizedDir);
+  };
+
   const ratio = progress && progress.total > 0 ? progress.current / progress.total : 0;
   const indeterminate = !!progress && progress.total === 0 && !progress.done;
+  const stageLabel =
+    progress?.stage === "download" ? "下载中" : progress?.stage === "extract" ? "解压中" : "汉化中";
 
   return (
     <div className="flex flex-col h-screen bg-hex-bg text-hex-text overflow-hidden">
@@ -137,10 +162,26 @@ function App() {
             )}
             {resultDir && !busy && (
               <button
+                onClick={localize}
+                className="flex items-center gap-2 px-5 py-2.5 bg-hex-blue-dark/50 border border-hex-blue text-hex-blue font-semibold hover:bg-hex-blue-dark transition-colors"
+              >
+                <Languages size={18} /> 开始汉化
+              </button>
+            )}
+            {resultDir && !busy && (
+              <button
                 onClick={openResult}
                 className="flex items-center gap-2 px-4 py-2.5 bg-hex-panel border border-hex-gold-dark/50 text-hex-gold hover:border-hex-gold transition-colors"
               >
-                <FolderOpen size={16} /> 打开文件夹
+                <FolderOpen size={16} /> 打开数据包
+              </button>
+            )}
+            {localizedDir && !busy && (
+              <button
+                onClick={openLocalized}
+                className="flex items-center gap-2 px-4 py-2.5 bg-hex-panel border border-hex-gold-dark/50 text-hex-gold hover:border-hex-gold transition-colors"
+              >
+                <FolderOpen size={16} /> 打开汉化结果
               </button>
             )}
           </section>
@@ -150,7 +191,7 @@ function App() {
             <section className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-hex-gold-light">
                 <Loader2 size={16} className="animate-spin" />
-                <span>{progress.stage === "download" ? "下载中" : "解压中"}</span>
+                <span>{stageLabel}</span>
               </div>
               <HextechProgressBar ratio={ratio} indeterminate={indeterminate} />
               <div className="flex justify-between text-xs text-hex-text-muted">

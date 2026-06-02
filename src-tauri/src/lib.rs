@@ -2,14 +2,16 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::State;
 
+mod constants;
 mod ddragon;
 mod download;
 mod extract;
+mod localize;
 
 /// 任务进度事件,通过 `task://progress` 推送到前端。
 #[derive(Clone, serde::Serialize)]
 pub struct ProgressEvent {
-    /// 阶段:"download" | "extract"
+    /// 阶段:"download" | "extract" | "localize"
     pub stage: String,
     /// 当前进度(下载阶段为字节数,解压阶段为已处理条目数)
     pub current: u64,
@@ -46,6 +48,7 @@ pub fn run() {
             ddragon::list_versions,
             download::download_pack,
             extract::extract_pack,
+            localize::run_lol_localization,
             cancel_task
         ])
         .run(tauri::generate_context!())

@@ -11,23 +11,21 @@ use tauri::{AppHandle, Emitter, State};
 
 use crate::{CancelFlag, ProgressEvent};
 
-/// 解压 `.tgz` 到目标目录下的同名子目录;成功后删除 `.tgz`,返回解压根目录路径。
+/// 解压 `.tgz` 到 `{dest_dir}/联盟官方数据包-{version}/`;成功后删除 `.tgz`,返回解压根目录路径。
 #[tauri::command]
 pub async fn extract_pack(
     app: AppHandle,
     state: State<'_, CancelFlag>,
     tgz_path: String,
     dest_dir: String,
+    version: String,
 ) -> Result<String, String> {
     state.0.store(false, Ordering::SeqCst);
     let cancel = state.0.clone();
 
     let tgz = PathBuf::from(&tgz_path);
-    let stem = tgz
-        .file_stem()
-        .map(|s| s.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "dragontail".into());
-    let out_dir = PathBuf::from(&dest_dir).join(&stem);
+    let out_dir = PathBuf::from(&dest_dir)
+        .join(format!("{}-{version}", crate::constants::LEAGUE_DATA_SUBFOLDER));
 
     // 解压是 CPU/IO 密集的同步操作,放到阻塞线程池
     let app_cloned = app.clone();
