@@ -28,7 +28,7 @@ plans/
 
 | 计划 | 状态 | 说明 |
 |---|---|---|
-| [2026-06-02-tauri-rewrite.md](./2026-06-02-tauri-rewrite.md) | 📋 待执行 | 把 Flet v2 整体重写为 Tauri 2(Rust + React)桌面应用:复用 `z-image-gui` 骨架,分期交付「下载管道 → 联盟汉化 → 云顶汉化 → UI 打磨 → 打包」 |
+| [2026-06-02-tauri-rewrite.md](./2026-06-02-tauri-rewrite.md) | ⚠️ 基础完成 | Flet v2 → Tauri 2(Rust + React)重写。M1 下载 ✅ / M2 联盟汉化 ✅ / M3 云顶汉化 ✅ / M4 四标签 UI ✅(HEAD `e85aee6`,未 push);**M5 打包+开源待执行**,端到端 GUI 实拉待验收 |
 
 ## 历史计划
 
