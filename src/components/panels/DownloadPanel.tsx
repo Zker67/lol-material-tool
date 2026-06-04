@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { FolderOpen, Download, X, Loader2, RefreshCw, ExternalLink } from "lucide-react";
 import { HextechProgressBar } from "../HextechProgressBar";
+import { Favicon } from "../Favicon";
 import type { TaskProgress } from "../../lib/api";
 import { formatBytes, formatSpeed, formatEta } from "../../lib/utils";
 
@@ -195,17 +196,21 @@ export function DownloadPanel({
           </div>
         )}
 
-        {/* 相关链接 */}
+        {/* 相关链接(与导航页一致的图标卡片) */}
         <div className="space-y-2 pt-2">
           <div className="text-sm font-semibold text-hex-gold">相关链接</div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {RELATED_LINKS.map((l) => (
               <button
                 key={l.url}
                 onClick={() => openUrl(l.url)}
-                className="text-hex-blue hover:text-hex-blue-light underline underline-offset-2 inline-flex items-center gap-1"
+                className="group flex items-center gap-3 p-3 rounded bg-hex-bg-2/30 border border-hex-gold-dark/15 hover:border-hex-gold/60 hover:bg-hex-gold-dark/10 transition-all duration-300 cursor-pointer hover:-translate-y-0.5 shadow-sm text-left"
               >
-                <ExternalLink size={13} /> {l.name}
+                <Favicon url={l.url} name={l.name} />
+                <span className="flex-1 min-w-0 text-sm font-medium text-hex-gold-light group-hover:text-hex-gold transition-colors break-words">
+                  {l.name}
+                </span>
+                <ExternalLink className="w-3.5 h-3.5 text-hex-text-muted opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
               </button>
             ))}
           </div>
