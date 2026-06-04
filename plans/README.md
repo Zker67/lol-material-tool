@@ -34,4 +34,4 @@ plans/
 
 | 计划 | 说明 |
 |---|---|
-| _暂无_ | 已完成的计划归档至 `archive/` 后登记于此 |
+| [2026-06-04-navigation-beautify.md](./archive/2026-06-04-navigation-beautify.md) | 导航界面美化与重构，添加分类、搜索与 Icon 自动抓取 |

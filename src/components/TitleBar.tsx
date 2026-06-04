@@ -3,7 +3,20 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { X, Minus, Square, Copy } from "lucide-react";
 
 export function TitleBar() {
-  const appWindow = getCurrentWindow();
+  let appWindow: any;
+  try {
+    appWindow = getCurrentWindow();
+  } catch (e) {
+    // Non-tauri browser env fallback
+    appWindow = {
+      isMaximized: async () => false,
+      listen: async () => () => {},
+      minimize: async () => {},
+      maximize: async () => {},
+      unmaximize: async () => {},
+      close: async () => {},
+    };
+  }
   const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => {
@@ -16,7 +29,7 @@ export function TitleBar() {
     });
 
     return () => {
-      unlisten.then((f) => f());
+      unlisten.then((f: any) => f());
     };
   }, []);
 
