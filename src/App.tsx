@@ -85,7 +85,12 @@ function App() {
   };
 
   const openResult = async () => {
-    if (resultDir) await openPath(resultDir);
+    if (!resultDir) return;
+    try {
+      await openPath(resultDir);
+    } catch (e) {
+      addLog(`打开数据包失败:${e}`);
+    }
   };
 
   const runLocalize = async (label: string, fn: (d: string) => Promise<string>) => {
@@ -106,7 +111,12 @@ function App() {
   };
 
   const openLocalized = async () => {
-    if (localizedDir) await openPath(localizedDir);
+    if (!localizedDir) return;
+    try {
+      await openPath(localizedDir);
+    } catch (e) {
+      addLog(`打开汉化结果失败:${e}`);
+    }
   };
 
   return (

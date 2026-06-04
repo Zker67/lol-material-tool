@@ -23,6 +23,7 @@
       "identifier": "fs:scope",
       "allow": ["$HOME/**", "$DOWNLOAD/**", "$APPLOCALDATA/**", "**"]
     },
-    "opener:default"
+    "opener:default",
+    "opener:allow-open-path"
   ]
 }
