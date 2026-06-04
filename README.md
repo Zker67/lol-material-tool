@@ -1,7 +1,5 @@
 # lol-material-tool · 英雄联盟素材包获取 & 整理工具
 
-> 🤖 **协作 AI 请先读**:本仓库属 zker67 工作区,治理规范见上层 [`../AGENTS.md`](../AGENTS.md);本项目设计、里程碑与汉化业务不变量见 [`plans/2026-06-02-tauri-rewrite.md`](./plans/2026-06-02-tauri-rewrite.md)。
-
 从 Riot 官方 **Data Dragon** 一键获取指定版本的英雄联盟 / 云顶之弈数据包,并把海量图标**按官方中文名批量重命名、自动归档**,供视频创作者、Wiki 编辑、二创作者直接取用。
 
 基于 **Tauri 2(Rust + React)** 重写自早期 Flet(Python)版本,主打更小的体积、更快更稳的下载 / 解压与批量文件处理。
@@ -112,4 +110,4 @@ zker67 · GitHub [@Zker67](https://github.com/Zker67) · B站「仓小杰」
 
 ## 📄 许可证
 
-开源准备中(计划 MIT),当前尚未正式发布。
+[MIT](./LICENSE) © zker67
