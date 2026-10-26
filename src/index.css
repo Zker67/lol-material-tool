@@ -1,10 +1,99 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-hex-gold: #c8aa6e;
+  --color-hex-gold-light: #f0e6d2;
+  --color-hex-gold-dark: #785a28;
+  --color-hex-blue: #0ac8b9;
+  --color-hex-blue-light: #0397ab;
+  --color-hex-blue-dark: #005a82;
+  --color-hex-bg: #010a13;
+  --color-hex-bg-2: #0a1428;
+  --color-hex-panel: #1e2328;
+  --color-hex-panel-light: #3c3c41;
+  --color-hex-text: #f0e6d2;
+  --color-hex-text-muted: #a09b8c;
+
+  --font-display: Rajdhani, system-ui, sans-serif;
+}
+
+/* shadcn/ui 的设计令牌,映射到 Hextech 色板(应用只有深色) */
+@theme inline {
+  --font-sans: Rajdhani, "Microsoft YaHei UI", system-ui, sans-serif;
+  --font-heading: var(--font-display);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  color-scheme: dark;
+  --radius: 0.375rem;
+  --background: #010a13;
+  --foreground: #f0e6d2;
+  --card: #0a1428;
+  --card-foreground: #f0e6d2;
+  --popover: #0a1428;
+  --popover-foreground: #f0e6d2;
+  --primary: #c8aa6e;
+  --primary-foreground: #010a13;
+  --secondary: #1e2328;
+  --secondary-foreground: #f0e6d2;
+  --muted: #141c26;
+  --muted-foreground: #a09b8c;
+  --accent: #0b2a33;
+  --accent-foreground: #0ac8b9;
+  --destructive: #e84057;
+  --border: rgb(120 90 40 / 45%);
+  --input: rgb(120 90 40 / 60%);
+  --ring: #0ac8b9;
+  --sidebar: #050f1a;
+  --sidebar-foreground: #f0e6d2;
+  --sidebar-primary: #c8aa6e;
+  --sidebar-primary-foreground: #010a13;
+  --sidebar-accent: #0b2a33;
+  --sidebar-accent-foreground: #0ac8b9;
+  --sidebar-border: rgb(120 90 40 / 40%);
+  --sidebar-ring: #0ac8b9;
+}
 
 @layer base {
-  :root {
-    color-scheme: dark;
+  * {
+    @apply border-border outline-ring/50;
   }
 
   html,
@@ -15,7 +104,7 @@
   }
 
   body {
-    @apply bg-hex-bg text-hex-text font-sans;
+    @apply bg-background text-foreground font-sans;
     overflow: hidden;
     -webkit-user-select: none;
     user-select: none;

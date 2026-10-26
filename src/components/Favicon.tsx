@@ -36,7 +36,7 @@ export function Favicon({
   if (status === "error") {
     if (fallbackIcon) {
       return (
-        <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-hex-bg-2 rounded border border-hex-gold-dark/30 text-lg shadow-inner select-none">
+        <div className="w-8 h-8 shrink-0 flex items-center justify-center bg-hex-bg-2 rounded-sm border border-hex-gold-dark/30 text-lg shadow-inner select-none">
           {fallbackIcon}
         </div>
       );
@@ -55,7 +55,7 @@ export function Favicon({
     const gradient = gradients[hash % gradients.length];
     return (
       <div
-        className={`w-8 h-8 flex-shrink-0 flex items-center justify-center bg-gradient-to-br ${gradient} rounded border border-hex-gold-dark/20 shadow-md text-white font-bold text-sm select-none`}
+        className={`w-8 h-8 shrink-0 flex items-center justify-center bg-linear-to-br ${gradient} rounded-sm border border-hex-gold-dark/20 shadow-md text-white font-bold text-sm select-none`}
       >
         {char}
       </div>
@@ -63,7 +63,7 @@ export function Favicon({
   }
 
   return (
-    <div className="relative w-8 h-8 flex-shrink-0 flex items-center justify-center bg-hex-bg-2 rounded border border-hex-gold-dark/20 overflow-hidden shadow-inner select-none">
+    <div className="relative w-8 h-8 shrink-0 flex items-center justify-center bg-hex-bg-2 rounded-sm border border-hex-gold-dark/20 overflow-hidden shadow-inner select-none">
       {status === "loading" && (
         <div className="absolute inset-0 bg-hex-bg-2 animate-pulse flex items-center justify-center">
           <Globe className="w-3.5 h-3.5 text-hex-text-muted animate-spin" />

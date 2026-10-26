@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
-import { openPath } from "@tauri-apps/plugin-opener";
-import { CloudDownload, FolderCog, Map as MapIcon, CircleHelp } from "lucide-react";
 import { TitleBar } from "./components/TitleBar";
-import { Tabs, type TabDef } from "./components/Tabs";
+import { Sidebar } from "./components/Sidebar";
+import { Browser } from "./features/browser/Browser";
+import { CommandPalette } from "./features/browser/CommandPalette";
+import { BROWSER_SECTIONS, useUI } from "./store/ui";
+import { Tasks, type PackInfo } from "./mygo";
 import { DownloadPanel } from "./components/panels/DownloadPanel";
 import { LocalizePanel } from "./components/panels/LocalizePanel";
 import { NavPanel } from "./components/panels/NavPanel";
@@ -16,18 +17,13 @@ import {
   runLolLocalization,
   runTftLocalization,
   cancelTask,
+  pickDirectory,
+  openPath,
+  errorMessage,
 } from "./lib/api";
 
-/** 顶部四个 tab(下载 / 汉化 / 导航 / 说明),复刻 Flet 版结构 */
-const TABS: TabDef[] = [
-  { key: "download", label: "下载", icon: CloudDownload },
-  { key: "localize", label: "汉化", icon: FolderCog },
-  { key: "nav", label: "导航", icon: MapIcon },
-  { key: "help", label: "说明", icon: CircleHelp },
-];
-
 function App() {
-  const [tab, setTab] = useState("download");
+  const section = useUI((s) => s.section);
   const [versions, setVersions] = useState<string[]>([]);
   const [version, setVersion] = useState("");
   const [destDir, setDestDir] = useState("");
@@ -36,6 +32,8 @@ function App() {
   const [resultDir, setResultDir] = useState<string | null>(null);
   const [localizedDir, setLocalizedDir] = useState<string | null>(null);
   const { progress, reset } = useTaskProgress();
+  // 选中版本的官方全量包是否存在(部分版本如 7.24.2 没有);undefined 表示检查中
+  const [packInfo, setPackInfo] = useState<PackInfo | null | undefined>(undefined);
 
   const addLog = (msg: string) => setLogs((prev) => [...prev, msg]);
 
@@ -45,20 +43,37 @@ function App() {
         setVersions(vs);
         if (vs.length) setVersion(vs[0]);
       })
-      .catch((e) => addLog(`获取版本列表失败:${e}`));
+      .catch((e) => addLog(`获取版本列表失败:${errorMessage(e)}`));
   };
 
   useEffect(() => {
     refreshVersions();
   }, []);
 
+  useEffect(() => {
+    if (!version) return;
+    let stale = false;
+    setPackInfo(undefined);
+    Tasks.checkPack(version)
+      .then((info) => !stale && setPackInfo(info))
+      .catch(() => !stale && setPackInfo(null)); // 检查失败不阻止下载
+    return () => {
+      stale = true;
+    };
+  }, [version]);
+
   const pickDir = async () => {
-    const dir = await open({ directory: true, multiple: false });
-    if (typeof dir === "string") setDestDir(dir);
+    try {
+      const dir = await pickDirectory();
+      if (dir) setDestDir(dir);
+    } catch (e) {
+      addLog(`选择目录失败:${errorMessage(e)}`);
+    }
   };
 
   const start = async () => {
     if (!version) return addLog("请先选择版本");
+    if (packInfo && !packInfo.available) return addLog(`版本 ${version} 官方未提供全量数据包,请换一个版本`);
     if (!destDir) return addLog("请先选择保存目录");
     setBusy(true);
     setResultDir(null);
@@ -73,7 +88,7 @@ function App() {
       addLog(`解压完成:${out}`);
       setResultDir(out);
     } catch (e) {
-      addLog(`任务失败:${e}`);
+      addLog(`任务失败:${errorMessage(e)}`);
     } finally {
       setBusy(false);
     }
@@ -89,7 +104,7 @@ function App() {
     try {
       await openPath(resultDir);
     } catch (e) {
-      addLog(`打开数据包失败:${e}`);
+      addLog(`打开数据包失败:${errorMessage(e)}`);
     }
   };
 
@@ -104,7 +119,7 @@ function App() {
       addLog(`${label}完成:${out}`);
       setLocalizedDir(out);
     } catch (e) {
-      addLog(`${label}失败:${e}`);
+      addLog(`${label}失败:${errorMessage(e)}`);
     } finally {
       setBusy(false);
     }
@@ -115,57 +130,55 @@ function App() {
     try {
       await openPath(localizedDir);
     } catch (e) {
-      addLog(`打开汉化结果失败:${e}`);
+      addLog(`打开汉化结果失败:${errorMessage(e)}`);
     }
   };
+
+  const inBrowser = BROWSER_SECTIONS.includes(section);
 
   return (
     <div className="flex flex-col h-screen bg-hex-bg text-hex-text overflow-hidden">
       <TitleBar />
 
-      {/* 产品标题(作者署名为公开身份 zker67) */}
-      <header className="shrink-0 flex items-baseline justify-between px-6 py-3 border-b border-hex-gold-dark/30">
-        <h1 className="text-lg font-display font-bold text-hex-gold tracking-wide">
-          英雄联盟素材包获取 &amp; 整理工具
-        </h1>
-        <span className="text-xs text-hex-text-muted">by Bilibili 仓小杰 · 完全免费</span>
-      </header>
-
-      <Tabs tabs={TABS} active={tab} onChange={setTab} />
-
-      <main className="flex-1 overflow-hidden px-6 py-5">
-        {tab === "download" && (
-          <DownloadPanel
-            versions={versions}
-            version={version}
-            onVersionChange={setVersion}
-            onRefresh={refreshVersions}
-            destDir={destDir}
-            onPickDir={pickDir}
-            busy={busy}
-            onStart={start}
-            onCancel={cancel}
-            resultDir={resultDir}
-            onOpenResult={openResult}
-            progress={progress}
-            logs={logs}
-          />
-        )}
-        {tab === "localize" && (
-          <LocalizePanel
-            resultDir={resultDir}
-            busy={busy}
-            onLolLocalize={() => runLocalize("联盟汉化", runLolLocalization)}
-            onTftLocalize={() => runLocalize("云顶汉化", runTftLocalization)}
-            localizedDir={localizedDir}
-            onOpenLocalized={openLocalized}
-            progress={progress}
-            logs={logs}
-          />
-        )}
-        {tab === "nav" && <NavPanel />}
-        {tab === "help" && <HelpPanel />}
-      </main>
+      <div className="flex min-h-0 flex-1">
+        <Sidebar />
+        <main className={inBrowser ? "min-w-0 flex-1 overflow-hidden" : "min-w-0 flex-1 overflow-hidden px-6 py-5"}>
+          {inBrowser && <Browser progress={progress} />}
+          {section === "download" && (
+            <DownloadPanel
+              versions={versions}
+              version={version}
+              onVersionChange={setVersion}
+              onRefresh={refreshVersions}
+              destDir={destDir}
+              onPickDir={pickDir}
+              busy={busy}
+              onStart={start}
+              onCancel={cancel}
+              resultDir={resultDir}
+              onOpenResult={openResult}
+              progress={progress}
+              logs={logs}
+              packInfo={packInfo}
+            />
+          )}
+          {section === "localize" && (
+            <LocalizePanel
+              resultDir={resultDir}
+              busy={busy}
+              onLolLocalize={() => runLocalize("联盟汉化", runLolLocalization)}
+              onTftLocalize={() => runLocalize("云顶汉化", runTftLocalization)}
+              localizedDir={localizedDir}
+              onOpenLocalized={openLocalized}
+              progress={progress}
+              logs={logs}
+            />
+          )}
+          {section === "nav" && <NavPanel />}
+          {section === "help" && <HelpPanel />}
+        </main>
+      </div>
+      <CommandPalette />
     </div>
   );
 }

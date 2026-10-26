@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl } from "../../lib/api";
 import { FolderOpen, Download, X, Loader2, RefreshCw, ExternalLink } from "lucide-react";
 import { HextechProgressBar } from "../HextechProgressBar";
 import { Favicon } from "../Favicon";
 import type { TaskProgress } from "../../lib/api";
+import type { PackInfo } from "../../mygo";
 import { formatBytes, formatSpeed, formatEta } from "../../lib/utils";
 
 interface Props {
@@ -20,6 +21,8 @@ interface Props {
   onOpenResult: () => void;
   progress: TaskProgress | null;
   logs: string[];
+  /** 选中版本的全量包:undefined 检查中,null 检查失败 */
+  packInfo: PackInfo | null | undefined;
 }
 
 /** 下载页固定的「相关链接」 */
@@ -43,6 +46,7 @@ export function DownloadPanel({
   onOpenResult,
   progress,
   logs,
+  packInfo,
 }: Props) {
   // 赛季(major)集合:由全部版本号取首段去重,数字降序
   const majors = useMemo(() => {
@@ -82,7 +86,7 @@ export function DownloadPanel({
   return (
     <div className="flex gap-6 h-full">
       {/* 左:操作区 */}
-      <div className="flex-[3] min-w-0 space-y-5 overflow-auto pr-1">
+      <div className="flex-3 min-w-0 space-y-5 overflow-auto pr-1">
         <h2 className="text-xl font-display font-bold text-hex-gold border-b border-hex-gold-dark/50 pb-2">
           素材获取
         </h2>
@@ -94,7 +98,7 @@ export function DownloadPanel({
             value={major}
             disabled={busy || majors.length === 0}
             onChange={(e) => onMajorChange(e.target.value)}
-            className="bg-hex-panel border border-hex-gold-dark/50 px-3 py-2 text-sm text-hex-text focus:border-hex-gold outline-none disabled:opacity-50"
+            className="bg-hex-panel border border-hex-gold-dark/50 px-3 py-2 text-sm text-hex-text focus:border-hex-gold outline-hidden disabled:opacity-50"
           >
             {majors.length === 0 && <option>—</option>}
             {majors.map((m) => (
@@ -108,7 +112,7 @@ export function DownloadPanel({
             value={version}
             disabled={busy || filtered.length === 0}
             onChange={(e) => onVersionChange(e.target.value)}
-            className="bg-hex-panel border border-hex-gold-dark/50 px-3 py-2 text-sm text-hex-text focus:border-hex-gold outline-none disabled:opacity-50 min-w-[8rem]"
+            className="bg-hex-panel border border-hex-gold-dark/50 px-3 py-2 text-sm text-hex-text focus:border-hex-gold outline-hidden disabled:opacity-50 min-w-32"
           >
             {filtered.length === 0 && <option>加载中…</option>}
             {filtered.map((v) => (
@@ -126,6 +130,13 @@ export function DownloadPanel({
           </button>
         </div>
 
+        {/* 全量包大小 / 是否提供 */}
+        <div className="text-xs -mt-2">
+          {packInfo === undefined && <span className="text-hex-text-muted">正在检查数据包…</span>}
+          {packInfo?.available && <span className="text-hex-text-muted">全量包约 {formatBytes(packInfo.size)}</span>}
+          {packInfo && !packInfo.available && <span className="text-red-400">官方未提供该版本的全量包,可换一个版本,或在「素材浏览」中在线查看</span>}
+        </div>
+
         {/* 保存目录 */}
         <div className="space-y-2">
           <label className="text-sm text-hex-gold-light">目标目录</label>
@@ -134,7 +145,7 @@ export function DownloadPanel({
               readOnly
               value={destDir}
               placeholder="点击右侧按钮选择…"
-              className="flex-1 bg-hex-panel border border-hex-gold-dark/50 px-3 py-2 text-sm text-hex-text-muted outline-none"
+              className="flex-1 bg-hex-panel border border-hex-gold-dark/50 px-3 py-2 text-sm text-hex-text-muted outline-hidden"
             />
             <button
               onClick={onPickDir}
@@ -151,7 +162,8 @@ export function DownloadPanel({
           {!busy ? (
             <button
               onClick={onStart}
-              className="flex items-center gap-2 px-5 py-2.5 bg-hex-gold-dark/60 border border-hex-gold text-hex-gold-light font-semibold hover:bg-hex-gold-dark transition-colors"
+              disabled={!!packInfo && !packInfo.available}
+              className="disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 px-5 py-2.5 bg-hex-gold-dark/60 border border-hex-gold text-hex-gold-light font-semibold hover:bg-hex-gold-dark transition-colors"
             >
               <Download size={18} /> 获取数据包
             </button>
@@ -204,10 +216,10 @@ export function DownloadPanel({
               <button
                 key={l.url}
                 onClick={() => openUrl(l.url)}
-                className="group flex items-center gap-3 p-3 rounded bg-hex-bg-2/30 border border-hex-gold-dark/15 hover:border-hex-gold/60 hover:bg-hex-gold-dark/10 transition-all duration-300 cursor-pointer hover:-translate-y-0.5 shadow-sm text-left"
+                className="group flex items-center gap-3 p-3 rounded-sm bg-hex-bg-2/30 border border-hex-gold-dark/15 hover:border-hex-gold/60 hover:bg-hex-gold-dark/10 transition-all duration-300 cursor-pointer hover:-translate-y-0.5 shadow-xs text-left"
               >
                 <Favicon url={l.url} name={l.name} />
-                <span className="flex-1 min-w-0 text-sm font-medium text-hex-gold-light group-hover:text-hex-gold transition-colors break-words">
+                <span className="flex-1 min-w-0 text-sm font-medium text-hex-gold-light group-hover:text-hex-gold transition-colors wrap-break-word">
                   {l.name}
                 </span>
                 <ExternalLink className="w-3.5 h-3.5 text-hex-text-muted opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
@@ -218,7 +230,7 @@ export function DownloadPanel({
       </div>
 
       {/* 右:实时日志 */}
-      <div className="flex-[2] min-w-0 flex flex-col">
+      <div className="flex-2 min-w-0 flex flex-col">
         <div className="text-sm font-semibold text-hex-gold mb-2">实时日志</div>
         <div className="flex-1 overflow-auto bg-hex-bg-2 border border-hex-gold-dark/30 p-3 text-xs font-mono text-hex-text-muted space-y-0.5">
           {logs.length === 0 ? (

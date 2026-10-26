@@ -1,13 +1,13 @@
-# === 依赖与构建产物 (Node / Tauri) ===
+# === 依赖与构建产物 (Node / MyGo) ===
 node_modules
 dist
 dist-ssr
 *.local
 
-# Tauri / Rust 构建产物
-/src-tauri/target/
-# Tauri 自动生成的 schema
-/src-tauri/gen/schemas/
+# MyGo 打包产物、开发版应用与 Windows 资源文件
+/build/
+/.mygo/
+mygo_windows_*.syso
 
 # === Python(legacy/ 冻结存档,防御性忽略) ===
 __pycache__/

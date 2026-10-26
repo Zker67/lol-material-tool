@@ -32,7 +32,7 @@ export function LocalizePanel({
   return (
     <div className="flex gap-6 h-full">
       {/* 左:操作区 */}
-      <div className="flex-[3] min-w-0 space-y-5 overflow-auto pr-1">
+      <div className="flex-3 min-w-0 space-y-5 overflow-auto pr-1">
         <h2 className="text-xl font-display font-bold text-hex-gold border-b border-hex-gold-dark/50 pb-2">
           汉化整理
         </h2>
@@ -89,7 +89,7 @@ export function LocalizePanel({
       </div>
 
       {/* 右:实时日志 */}
-      <div className="flex-[2] min-w-0 flex flex-col">
+      <div className="flex-2 min-w-0 flex flex-col">
         <div className="text-sm font-semibold text-hex-gold mb-2">实时日志</div>
         <div className="flex-1 overflow-auto bg-hex-bg-2 border border-hex-gold-dark/30 p-3 text-xs font-mono text-hex-text-muted space-y-0.5">
           {logs.length === 0 ? (

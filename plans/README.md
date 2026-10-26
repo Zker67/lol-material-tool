@@ -28,6 +28,8 @@ plans/
 
 | 计划 | 状态 | 说明 |
 |---|---|---|
+| [2026-10-26-asset-browser.md](./2026-10-26-asset-browser.md) | ⚠️ 基础完成 | 按版本在线浏览素材(对比 / 历史原画 / 导出 / 缓存)+ 旧版本数据包兼容;测试、打包完成,界面待验收 |
+| [2026-10-26-mygo-rewrite.md](./2026-10-26-mygo-rewrite.md) | ⚠️ 基础完成 | Tauri → MyGo(Go + React)重写,Bun + TS 7 / Vite 8 / Tailwind 4;测试、打包完成,GUI 待验收 |
 | [2026-06-02-tauri-rewrite.md](./2026-06-02-tauri-rewrite.md) | ⚠️ 基础完成 | Flet v2 → Tauri 2(Rust + React)重写。M1 下载 ✅ / M2 联盟汉化 ✅ / M3 云顶汉化 ✅ / M4 四标签 UI ✅(HEAD `e85aee6`,未 push);**M5 打包+开源待执行**,端到端 GUI 实拉待验收 |
 
 ## 历史计划

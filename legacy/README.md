@@ -1,6 +1,6 @@
 # legacy — 历史版本存档
 
-本目录存放「lol-material-tool」的**历史实现**,仅作参考与追溯,**不参与现行 Tauri 版的运行与构建**。
+本目录存放「lol-material-tool」的**历史实现**,仅作参考与追溯,**不参与现行 MyGo 版的运行与构建**。
 
 ## 目录结构
 
@@ -9,9 +9,10 @@
 | `lol_material_cli_v1.py` | v1 | 单文件命令行版本(原文件名含中文与 `&`,已规范化)。基于 `input()` 菜单,在单个文件内串起下载、解压、汉化整理全流程。 |
 | `flet-v2/` | v2 | 模块化 Flet 图形界面整套快照:`src/`(主程序)、`requirements.txt`、`build_config/`(PyInstaller)、`docs/project_summary.md`(交接笔记)、`scripts/`、原 `README.md`。 |
 
-## 与现行版本(Tauri)的关系
+## 与现行版本(MyGo)的关系
 
-- 现行版本正用 **Tauri 2(Rust + React)** 重写,设计见 [`../plans/2026-06-02-tauri-rewrite.md`](../plans/2026-06-02-tauri-rewrite.md)。
+- 现行版本为 **MyGo(Go + React)**,设计见 [`../plans/2026-10-26-mygo-rewrite.md`](../plans/2026-10-26-mygo-rewrite.md);上一代 Tauri 重写设计见 [`../plans/2026-06-02-tauri-rewrite.md`](../plans/2026-06-02-tauri-rewrite.md)。
+- Tauri 版未存档,见 git 历史(提交 `5bfd72e` 的 `src-tauri/`);Go 版 `internal/material/localize.go` 逐条移植自其中的 `localize.rs`。
 - v1 与 v2 互不 import,**无代码依赖**;二者保留为重写的**业务逻辑参考来源**——尤其 `flet-v2/src/core/localizer.py` 的汉化分类逻辑(称号/本名拼名、符文图标根路径回退、属性点硬编码字典、TFT 多形态兼容等关键细节,已在重写设计的「§3 不变量」固化)。
 
 ## 注意

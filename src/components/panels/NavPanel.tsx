@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl } from "../../lib/api";
 import {
   Globe,
   Search,
@@ -53,7 +53,7 @@ function matchCategory(block: NavBlock, category: string): boolean {
 // 2. Featured 推荐卡片
 function FeaturedBlock({ block }: { block: Extract<NavBlock, { kind: "featured" }> }) {
   return (
-    <div className="rounded-lg border-2 border-hex-gold/50 bg-gradient-to-br from-hex-bg-2/80 to-hex-gold-dark/15 p-5 shadow-[0_0_20px_rgba(200,170,110,0.12)] relative overflow-hidden">
+    <div className="rounded-lg border-2 border-hex-gold/50 bg-linear-to-br from-hex-bg-2/80 to-hex-gold-dark/15 p-5 shadow-[0_0_20px_rgba(200,170,110,0.12)] relative overflow-hidden">
       {/* 海克斯科技转角发光装饰 */}
       <div className="absolute top-0 right-0 w-16 h-16 pointer-events-none border-t-2 border-r-2 border-hex-gold/20 translate-x-2 -translate-y-2 rotate-45" />
 
@@ -68,13 +68,13 @@ function FeaturedBlock({ block }: { block: Extract<NavBlock, { kind: "featured" 
           <div
             key={it.url}
             onClick={() => openUrl(it.url)}
-            className="group flex items-center gap-3 p-3 rounded bg-hex-panel/50 border border-hex-gold/20 hover:border-hex-gold hover:bg-hex-gold-dark/15 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-0.5"
+            className="group flex items-center gap-3 p-3 rounded-sm bg-hex-panel/50 border border-hex-gold/20 hover:border-hex-gold hover:bg-hex-gold-dark/15 transition-all duration-300 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5"
           >
-            <div className="w-9 h-9 flex-shrink-0 flex items-center justify-center bg-hex-bg-2 rounded border border-hex-gold-dark/40 text-xl group-hover:scale-110 transition-transform">
+            <div className="w-9 h-9 shrink-0 flex items-center justify-center bg-hex-bg-2 rounded-sm border border-hex-gold-dark/40 text-xl group-hover:scale-110 transition-transform">
               {it.icon}
             </div>
             <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-sm font-medium text-hex-gold-light group-hover:text-hex-gold transition-colors break-words">
+              <span className="text-sm font-medium text-hex-gold-light group-hover:text-hex-gold transition-colors wrap-break-word">
                 {it.name}
               </span>
               <span className="text-[11px] text-hex-text-muted mt-0.5">
@@ -103,15 +103,15 @@ function LinksBlock({ block }: { block: Extract<NavBlock, { kind: "links" }> }) 
           <div
             key={it.url}
             onClick={() => openUrl(it.url)}
-            className="group flex items-center gap-3 p-3 rounded bg-hex-bg-2/30 border border-hex-gold-dark/15 hover:border-hex-gold/60 hover:bg-hex-gold-dark/10 transition-all duration-300 cursor-pointer hover:-translate-y-0.5 shadow-sm"
+            className="group flex items-center gap-3 p-3 rounded-sm bg-hex-bg-2/30 border border-hex-gold-dark/15 hover:border-hex-gold/60 hover:bg-hex-gold-dark/10 transition-all duration-300 cursor-pointer hover:-translate-y-0.5 shadow-xs"
           >
             <Favicon url={it.url} name={it.name} />
             <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-sm font-medium text-hex-gold-light group-hover:text-hex-gold transition-colors break-words">
+              <span className="text-sm font-medium text-hex-gold-light group-hover:text-hex-gold transition-colors wrap-break-word">
                 {it.name}
               </span>
               {it.desc && (
-                <span className="text-xs text-hex-text-muted mt-0.5 break-words" title={it.desc}>
+                <span className="text-xs text-hex-text-muted mt-0.5 wrap-break-word" title={it.desc}>
                   {it.desc}
                 </span>
               )}
@@ -139,7 +139,7 @@ function SourcesBlock({ block }: { block: Extract<NavBlock, { kind: "sources" }>
           return (
             <div
               key={row.label}
-              className="flex items-start gap-3.5 p-3 rounded bg-hex-bg-2/40 border border-hex-gold-dark/15 hover:border-hex-gold-dark/30 transition-colors"
+              className="flex items-start gap-3.5 p-3 rounded-sm bg-hex-bg-2/40 border border-hex-gold-dark/15 hover:border-hex-gold-dark/30 transition-colors"
             >
               <Favicon url={firstUrl} name={row.label} />
               <div className="flex-1 min-w-0">
@@ -151,7 +151,7 @@ function SourcesBlock({ block }: { block: Extract<NavBlock, { kind: "sources" }>
                     <button
                       key={it.url}
                       onClick={() => openUrl(it.url)}
-                      className="px-2.5 py-1 text-xs text-hex-gold-light bg-hex-panel/90 hover:bg-hex-gold-dark/25 border border-hex-gold-dark/35 hover:border-hex-gold rounded transition-all duration-200 flex items-center gap-1 shadow-sm hover:shadow-[0_0_8px_rgba(200,170,110,0.18)]"
+                      className="px-2.5 py-1 text-xs text-hex-gold-light bg-hex-panel/90 hover:bg-hex-gold-dark/25 border border-hex-gold-dark/35 hover:border-hex-gold rounded-sm transition-all duration-200 flex items-center gap-1 shadow-xs hover:shadow-[0_0_8px_rgba(200,170,110,0.18)]"
                     >
                       {it.name}
                       <ExternalLink className="w-2.5 h-2.5 opacity-60" />
@@ -192,15 +192,15 @@ function MixedBlock({ block }: { block: Extract<NavBlock, { kind: "mixed" }> }) 
                 <div
                   key={it.url}
                   onClick={() => openUrl(it.url)}
-                  className="group flex items-center gap-3 p-2.5 rounded bg-hex-bg-2/30 border border-hex-gold-dark/15 hover:border-hex-gold/60 hover:bg-hex-gold-dark/10 transition-all duration-300 cursor-pointer hover:-translate-y-0.5 shadow-sm"
+                  className="group flex items-center gap-3 p-2.5 rounded-sm bg-hex-bg-2/30 border border-hex-gold-dark/15 hover:border-hex-gold/60 hover:bg-hex-gold-dark/10 transition-all duration-300 cursor-pointer hover:-translate-y-0.5 shadow-xs"
                 >
                   <Favicon url={it.url} name={it.name} />
                   <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-sm font-medium text-hex-gold-light group-hover:text-hex-gold transition-colors break-words">
+                    <span className="text-sm font-medium text-hex-gold-light group-hover:text-hex-gold transition-colors wrap-break-word">
                       {it.name}
                     </span>
                     {it.desc && (
-                      <span className="text-xs text-hex-text-muted mt-0.5 break-words" title={it.desc}>
+                      <span className="text-xs text-hex-text-muted mt-0.5 wrap-break-word" title={it.desc}>
                         {it.desc}
                       </span>
                     )}
@@ -317,7 +317,7 @@ export function NavPanel() {
   return (
     <div className="flex h-full gap-6 overflow-hidden">
       {/* 左侧海克斯科技风格导航栏 */}
-      <aside className="w-52 flex-shrink-0 flex flex-col justify-between bg-hex-bg-2/30 border border-hex-gold-dark/20 rounded-lg p-4">
+      <aside className="w-52 shrink-0 flex flex-col justify-between bg-hex-bg-2/30 border border-hex-gold-dark/20 rounded-lg p-4">
         <div className="space-y-5">
           <div className="px-1.5 pb-2 border-b border-hex-gold-dark/10">
             <h2 className="text-xs font-display font-bold text-hex-gold tracking-widest uppercase">
@@ -368,7 +368,7 @@ export function NavPanel() {
       {/* 右侧主显示面板 */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         {/* 顶部工具栏: 搜索与统计 */}
-        <div className="flex-shrink-0 flex items-center justify-between gap-4 mb-4">
+        <div className="shrink-0 flex items-center justify-between gap-4 mb-4">
           <div className="relative flex-1 max-w-sm">
             <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none">
               <Search className="w-4 h-4 text-hex-text-muted" />
@@ -378,7 +378,7 @@ export function NavPanel() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜寻原画、音效、3D模型..."
-              className="w-full bg-hex-bg-2/50 text-hex-text placeholder-hex-text-muted/50 pl-9 pr-9 py-1.5 rounded border border-hex-gold-dark/30 focus:border-hex-gold focus:outline-none text-xs transition-all duration-300 shadow-inner"
+              className="w-full bg-hex-bg-2/50 text-hex-text placeholder-hex-text-muted/50 pl-9 pr-9 py-1.5 rounded-sm border border-hex-gold-dark/30 focus:border-hex-gold focus:outline-hidden text-xs transition-all duration-300 shadow-inner"
             />
             {searchQuery && (
               <button
@@ -390,7 +390,7 @@ export function NavPanel() {
             )}
           </div>
 
-          <div className="text-[11px] text-hex-text-muted bg-hex-bg-2/30 px-2.5 py-1.5 rounded border border-hex-gold-dark/10 flex items-center gap-1 tracking-wide">
+          <div className="text-[11px] text-hex-text-muted bg-hex-bg-2/30 px-2.5 py-1.5 rounded-sm border border-hex-gold-dark/10 flex items-center gap-1 tracking-wide">
             <span>找到</span>
             <span className="font-bold text-hex-gold px-0.5">{totalLinksCount}</span>
             <span>个资源</span>

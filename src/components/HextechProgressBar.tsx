@@ -11,10 +11,10 @@ export function HextechProgressBar({ ratio, indeterminate }: Props) {
   return (
     <div className="h-3 w-full bg-hex-bg-2 border border-hex-gold-dark/50 overflow-hidden relative">
       {indeterminate ? (
-        <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-hex-gold to-transparent animate-pulse" />
+        <div className="absolute inset-y-0 left-0 w-1/3 bg-linear-to-r from-transparent via-hex-gold to-transparent animate-pulse" />
       ) : (
         <div
-          className="h-full bg-gradient-to-r from-hex-gold-dark via-hex-gold to-hex-gold-light transition-[width] duration-150"
+          className="h-full bg-linear-to-r from-hex-gold-dark via-hex-gold to-hex-gold-light transition-[width] duration-150"
           style={{ width: `${pct}%` }}
         />
       )}

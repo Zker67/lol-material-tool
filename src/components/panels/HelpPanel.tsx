@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl } from "../../lib/api";
 import {
   Video,
   MessageSquare,
@@ -82,8 +82,8 @@ export function HelpPanel() {
                       const content = match ? match[2] : line;
 
                       return (
-                        <div key={li} className="flex items-start gap-2.5 p-2 rounded bg-hex-bg-2/30 border border-hex-gold-dark/10">
-                          <span className="w-4 h-4 flex-shrink-0 rounded-full bg-hex-gold-dark/30 border border-hex-gold/30 text-hex-gold text-[10px] font-bold flex items-center justify-center font-mono">
+                        <div key={li} className="flex items-start gap-2.5 p-2 rounded-sm bg-hex-bg-2/30 border border-hex-gold-dark/10">
+                          <span className="w-4 h-4 shrink-0 rounded-full bg-hex-gold-dark/30 border border-hex-gold/30 text-hex-gold text-[10px] font-bold flex items-center justify-center font-mono">
                             {num}
                           </span>
                           <span className="text-xs text-hex-gold-light leading-relaxed">
@@ -125,7 +125,7 @@ export function HelpPanel() {
             const stepNum = pi + 1;
             return (
               <div key={pi} className="relative">
-                <span className="absolute -left-[35px] top-0.5 w-6 h-6 rounded-full bg-hex-bg border-2 border-hex-gold text-hex-gold font-bold text-[10px] flex items-center justify-center shadow-md font-mono">
+                <span className="absolute left-[-35px] top-0.5 w-6 h-6 rounded-full bg-hex-bg border-2 border-hex-gold text-hex-gold font-bold text-[10px] flex items-center justify-center shadow-md font-mono">
                   {stepNum}
                 </span>
 
@@ -153,7 +153,7 @@ export function HelpPanel() {
   // 3. 渲染 - 联系作者 & 反馈
   const renderContact = (isFullWidth = true) => {
     return (
-      <section className={`rounded-lg border border-hex-gold-dark/40 bg-gradient-to-b from-hex-panel/20 to-hex-bg-2/20 p-5 hover:border-hex-gold/50 transition-all duration-300 ${!isFullWidth && 'max-w-4xl'}`}>
+      <section className={`rounded-lg border border-hex-gold-dark/40 bg-linear-to-b from-hex-panel/20 to-hex-bg-2/20 p-5 hover:border-hex-gold/50 transition-all duration-300 ${!isFullWidth && 'max-w-4xl'}`}>
         <h2 className="text-base font-display font-bold text-hex-gold border-b border-hex-gold-dark/20 pb-2.5 mb-4">
           📧 联系作者 & 反馈
         </h2>
@@ -167,7 +167,7 @@ export function HelpPanel() {
             return (
               <div
                 key={c.label}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded bg-hex-bg-2/40 border border-hex-gold-dark/15 hover:border-hex-gold-dark/30 transition-colors"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-sm bg-hex-bg-2/40 border border-hex-gold-dark/15 hover:border-hex-gold-dark/30 transition-colors"
               >
                 <div className="flex items-center gap-2 text-xs">
                   {c.icon === "video" ? (
@@ -183,7 +183,7 @@ export function HelpPanel() {
                   {c.url ? (
                     <button
                       onClick={() => openUrl(c.url!)}
-                      className="px-2.5 py-1 text-[10px] font-medium text-hex-blue bg-hex-blue-dark/10 hover:bg-hex-blue-dark/20 border border-hex-blue-dark/30 hover:border-hex-blue rounded transition-all duration-200"
+                      className="px-2.5 py-1 text-[10px] font-medium text-hex-blue bg-hex-blue-dark/10 hover:bg-hex-blue-dark/20 border border-hex-blue-dark/30 hover:border-hex-blue rounded-sm transition-all duration-200"
                     >
                       点击访问
                     </button>
@@ -214,7 +214,7 @@ export function HelpPanel() {
           })}
         </div>
 
-        <div className="mt-4 flex items-start gap-1.5 text-[10px] text-hex-text-muted bg-hex-bg-2/20 p-2.5 rounded border border-hex-gold-dark/10">
+        <div className="mt-4 flex items-start gap-1.5 text-[10px] text-hex-text-muted bg-hex-bg-2/20 p-2.5 rounded-sm border border-hex-gold-dark/10">
           <AlertCircle className="w-3.5 h-3.5 text-hex-gold shrink-0 mt-0.5" />
           <span>温馨提示：作者纯纯铁血打工人，微信添加请务必备注说明来意（如：联盟素材工具）。</span>
         </div>
@@ -260,7 +260,7 @@ export function HelpPanel() {
   return (
     <div className="flex h-full gap-6 overflow-hidden">
       {/* 左侧说明分类侧边栏 */}
-      <aside className="w-52 flex-shrink-0 flex flex-col justify-between bg-hex-bg-2/30 border border-hex-gold-dark/20 rounded-lg p-4 select-none">
+      <aside className="w-52 shrink-0 flex flex-col justify-between bg-hex-bg-2/30 border border-hex-gold-dark/20 rounded-lg p-4 select-none">
         <div className="space-y-5">
           <div className="px-1.5 pb-2 border-b border-hex-gold-dark/10">
             <h2 className="text-xs font-display font-bold text-hex-gold tracking-widest uppercase">

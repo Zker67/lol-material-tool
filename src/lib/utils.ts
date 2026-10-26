@@ -1,10 +1,5 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
 /** 合并 Tailwind class,后者覆盖前者的冲突项 */
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+export { cn } from "cn";
 
 /** 把字节数格式化为人类可读的体积(B/KB/MB/GB) */
 export function formatBytes(bytes: number): string {
