@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { cn } from "@/lib/utils";
 import type { DiffState } from "@/lib/assets";
@@ -15,6 +15,15 @@ export interface GridEntry {
   previousName?: string;
 }
 
+/** 网格中的一组(如某位英雄的皮肤),组标题可点击 */
+export interface GridGroup {
+  key: string;
+  title: string;
+  subtitle?: string;
+  icon?: string;
+  entries: GridEntry[];
+}
+
 const DIFF_BADGE: Record<DiffState, { label: string; className: string }> = {
   added: { label: "新增", className: "bg-hex-blue/90 text-hex-bg" },
   renamed: { label: "改名", className: "bg-hex-gold/90 text-hex-bg" },
@@ -24,6 +33,10 @@ const DIFF_BADGE: Record<DiffState, { label: string; className: string }> = {
 const GAP = 10;
 /** 卡片标题区高度(与 AssetTile 的 h-[42px] 一致)+ 上下边框 */
 const CAPTION = 42 + 2;
+/** 分组标题行高度 */
+const HEADER = 44;
+
+type Row = { kind: "header"; group: GridGroup } | { kind: "tiles"; entries: GridEntry[] };
 
 /** 一格素材卡片 */
 export function AssetTile({
@@ -69,9 +82,13 @@ export function AssetTile({
 /**
  * 虚拟滚动的素材网格:按容器宽度排列列数,只渲染可见的行。
  * aspect 是图片高宽比(1 为方形,1.82 为加载图竖图)。
+ * 传入 groups 时按组显示,每组前有一行标题(entries 只用于判断是否为空)。
  */
 export function AssetGrid({
   entries,
+  groups,
+  onGroupClick,
+  activeGroup,
   tileWidth,
   aspect,
   selectedId,
@@ -80,6 +97,9 @@ export function AssetGrid({
   empty,
 }: {
   entries: GridEntry[];
+  groups?: GridGroup[];
+  onGroupClick?: (g: GridGroup) => void;
+  activeGroup?: string;
   tileWidth: number;
   aspect: number;
   selectedId?: string;
@@ -102,18 +122,26 @@ export function AssetGrid({
   const columns = Math.max(1, Math.floor((inner + GAP) / (tileWidth + GAP)));
   const cell = columns > 0 ? (inner - GAP * (columns - 1)) / columns : tileWidth;
   const rowHeight = cell * aspect + CAPTION + GAP;
-  const rows = Math.ceil(entries.length / columns);
+
+  const rows = useMemo(() => {
+    const out: Row[] = [];
+    for (const g of groups ?? [{ key: "", title: "", entries }]) {
+      if (groups) out.push({ kind: "header", group: g });
+      for (let i = 0; i < g.entries.length; i += columns) out.push({ kind: "tiles", entries: g.entries.slice(i, i + columns) });
+    }
+    return out;
+  }, [groups, entries, columns]);
 
   const virtualizer = useVirtualizer({
-    count: rows,
+    count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => rowHeight,
+    estimateSize: (i) => (rows[i].kind === "header" ? HEADER : rowHeight),
     overscan: 4,
   });
 
   useEffect(() => {
     virtualizer.measure();
-  }, [rowHeight, columns, virtualizer]);
+  }, [rowHeight, rows, virtualizer]);
 
   return (
     <div ref={scrollRef} className="h-full overflow-y-auto px-4 pt-3 pb-4">
@@ -121,17 +149,39 @@ export function AssetGrid({
         <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">{empty ?? "没有符合条件的素材"}</div>
       ) : (
         <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
-          {virtualizer.getVirtualItems().map((row) => (
+          {virtualizer.getVirtualItems().map((vr) => {
+            const row = rows[vr.index];
+            if (row.kind === "header") {
+              const g = row.group;
+              return (
+                <button
+                  key={vr.key}
+                  type="button"
+                  onClick={() => onGroupClick?.(g)}
+                  className={cn(
+                    "group absolute left-0 flex w-full items-center gap-2.5 border-b border-border pb-1.5 text-left",
+                    g.key === activeGroup && "border-hex-blue/60",
+                  )}
+                  style={{ top: vr.start, height: HEADER - 8 }}
+                >
+                  {g.icon && <AssetImage path={g.icon} alt={g.title} className="size-8 shrink-0 rounded-sm border border-hex-gold-dark" />}
+                  <span className="font-heading text-sm font-semibold text-hex-gold group-hover:text-hex-gold-light">{g.title}</span>
+                  {g.subtitle && <span className="truncate text-xs text-muted-foreground">{g.subtitle}</span>}
+                  <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">{g.entries.length} 款</span>
+                </button>
+              );
+            }
+            return (
             <div
-              key={row.key}
+              key={vr.key}
               className="absolute left-0 grid w-full"
               style={{
-                top: row.start,
+                top: vr.start,
                 gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
                 columnGap: GAP,
               }}
             >
-              {entries.slice(row.index * columns, row.index * columns + columns).map((e) => (
+              {row.entries.map((e) => (
                 <AssetTile
                   key={e.id}
                   entry={e}
@@ -142,7 +192,8 @@ export function AssetGrid({
                 />
               ))}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

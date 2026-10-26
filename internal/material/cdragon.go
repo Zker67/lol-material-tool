@@ -35,6 +35,14 @@ type SkinArt struct {
 	Tile       string   `json:"tile"`
 	LoadScreen string   `json:"loadScreen"`
 	Chromas    []Chroma `json:"chromas"`
+	// Description 是皮肤背景故事(早期补丁可能为空)。
+	Description string `json:"description"`
+	// Rarity 是稀有度原值,如 kEpic、kLegendary;普通皮肤为 kNoRarity。
+	Rarity string `json:"rarity"`
+	// Legacy 表示绝版(经典)皮肤。
+	Legacy bool `json:"legacy"`
+	// SkinLines 是所属皮肤系列的名称。
+	SkinLines []string `json:"skinLines"`
 }
 
 // Chroma 是一款炫彩。
@@ -107,8 +115,10 @@ func ChampionArtFor(ctx context.Context, s *Store, patch, key string) (*Champion
 	}
 	var root any
 	var err error
+	var langDir string
 	for _, lang := range []string{"zh_cn", "default"} {
-		root, err = s.JSON(ctx, "cdragon/"+patch+"/plugins/rcp-be-lol-game-data/global/"+lang+"/v1/champions/"+key+".json")
+		langDir = "cdragon/" + patch + "/plugins/rcp-be-lol-game-data/global/" + lang + "/v1/"
+		root, err = s.JSON(ctx, langDir+"champions/"+key+".json")
 		if !errors.Is(err, ErrAssetNotFound) {
 			break
 		}
@@ -116,16 +126,35 @@ func ChampionArtFor(ctx context.Context, s *Store, patch, key string) (*Champion
 	if err != nil {
 		return nil, fmt.Errorf("读取补丁 %s 的英雄数据失败:%w", patch, err)
 	}
+	// 皮肤系列名称,读不到只是不显示系列
+	lineNames := map[string]string{}
+	if lines, err := s.JSON(ctx, langDir+"skinlines.json"); err == nil {
+		arr, _ := lines.([]any)
+		for _, l := range arr {
+			if name := str(l, "name"); name != "" {
+				lineNames[idString(field(l, "id"))] = name
+			}
+		}
+	}
 	art := &ChampionArt{Patch: patch}
 	skins, _ := field(root, "skins").([]any)
 	for _, sk := range skins {
 		sa := SkinArt{
-			ID:         idString(field(sk, "id")),
-			Name:       str(sk, "name"),
-			Splash:     cdragonAsset(patch, str(sk, "splashPath")),
-			Uncentered: cdragonAsset(patch, str(sk, "uncenteredSplashPath")),
-			Tile:       cdragonAsset(patch, str(sk, "tilePath")),
-			LoadScreen: cdragonAsset(patch, str(sk, "loadScreenPath")),
+			ID:          idString(field(sk, "id")),
+			Name:        str(sk, "name"),
+			Splash:      cdragonAsset(patch, str(sk, "splashPath")),
+			Uncentered:  cdragonAsset(patch, str(sk, "uncenteredSplashPath")),
+			Tile:        cdragonAsset(patch, str(sk, "tilePath")),
+			LoadScreen:  cdragonAsset(patch, str(sk, "loadScreenPath")),
+			Description: str(sk, "description"),
+			Rarity:      str(sk, "rarity"),
+			Legacy:      field(sk, "isLegacy") == true,
+		}
+		lines, _ := field(sk, "skinLines").([]any)
+		for _, l := range lines {
+			if name := lineNames[idString(field(l, "id"))]; name != "" {
+				sa.SkinLines = append(sa.SkinLines, name)
+			}
 		}
 		chromas, _ := field(sk, "chromas").([]any)
 		for _, ch := range chromas {

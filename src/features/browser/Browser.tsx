@@ -11,10 +11,13 @@ import { HextechProgressBar } from "@/components/HextechProgressBar";
 import { cancelTask, errorMessage, type TaskProgress } from "@/lib/api";
 import { useCatalog, useVersions } from "@/lib/assets";
 import { useUI, type DiffFilter, type Section } from "@/store/ui";
-import { AssetGrid, SimpleGrid, type GridEntry } from "./AssetGrid";
+import { AssetGrid, SimpleGrid, type GridEntry, type GridGroup } from "./AssetGrid";
 import { DetailPanel, exportTo } from "./DetailPanel";
 import { VersionPicker } from "./VersionPicker";
+import type { Champion } from "@/mygo";
+import { ChampionPicker } from "./ChampionPicker";
 import {
+  ITEM_TAGS,
   ROLE_LABELS,
   TFT_CATEGORIES,
   championsSection,
@@ -38,29 +41,12 @@ const TITLES: Partial<Record<Section, string>> = {
   tft: "云顶之弈",
 };
 
-const ITEM_TAGS: Record<string, string> = {
-  Boots: "鞋子",
-  Damage: "攻击力",
-  CriticalStrike: "暴击",
-  AttackSpeed: "攻速",
-  SpellDamage: "法术强度",
-  Mana: "法力",
-  Health: "生命值",
-  Armor: "护甲",
-  SpellBlock: "魔抗",
-  AbilityHaste: "技能急速",
-  LifeSteal: "生命偷取",
-  Consumable: "消耗品",
-  Trinket: "饰品",
-  Vision: "视野",
-};
-
 /** 筛选控件旁的小标签 */
 function FilterLabel({ children }: { children: string }) {
   return <span className="text-xs text-muted-foreground">{children}</span>;
 }
 
-function SectionFilters({ section, tftSetOptions }: { section: Section; tftSetOptions: string[] }) {
+function SectionFilters({ section, tftSetOptions, champions }: { section: Section; tftSetOptions: string[]; champions: Champion[] }) {
   const filters = useUI((s) => s.filters);
   const setFilters = useUI((s) => s.setFilters);
   const historyArt = useUI((s) => s.historyArt);
@@ -79,9 +65,12 @@ function SectionFilters({ section, tftSetOptions }: { section: Section; tftSetOp
     );
   if (section === "skins")
     return (
-      <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        详情显示该版本历史原画 <Switch checked={historyArt} onCheckedChange={setHistoryArt} className="scale-90" />
-      </label>
+      <div className="flex items-center gap-3">
+        <ChampionPicker champions={champions} value={filters.skinChampion} onChange={(id) => setFilters({ skinChampion: id })} />
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          详情显示该版本历史原画 <Switch checked={historyArt} onCheckedChange={setHistoryArt} className="scale-90" />
+        </label>
+      </div>
     );
   if (section === "items")
     return (
@@ -178,13 +167,15 @@ export function Browser({ progress }: { progress: TaskProgress | null }) {
 
   const tftSetOptions = useMemo(() => (cat ? tftSets(cat, filters.tftCategory) : []), [cat, filters.tftCategory]);
 
-  const result = useMemo((): (SectionResult & { groups?: RuneGroup[] }) | null => {
+  const result = useMemo((): (SectionResult & { groups?: RuneGroup[]; skinGroups?: GridGroup[] }) | null => {
     if (!cat) return null;
     switch (section) {
       case "champions":
         return championsSection(cat, cmp, search, filters, diffFilter);
-      case "skins":
-        return skinsSection(cat, cmp, search, diffFilter);
+      case "skins": {
+        const r = skinsSection(cat, cmp, search, filters, diffFilter);
+        return { ...r, skinGroups: r.groups, groups: undefined };
+      }
       case "items":
         return itemsSection(cat, cmp, search, filters, diffFilter);
       case "runes": {
@@ -281,7 +272,7 @@ export function Browser({ progress }: { progress: TaskProgress | null }) {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <SectionFilters section={section} tftSetOptions={tftSetOptions} />
+          <SectionFilters section={section} tftSetOptions={tftSetOptions} champions={cat?.champions ?? []} />
           {compareVersion && (
             <div className="flex items-center gap-2">
               <FilterLabel>{`对比 ${compareVersion}`}</FilterLabel>
@@ -326,6 +317,9 @@ export function Browser({ progress }: { progress: TaskProgress | null }) {
             <AssetGrid
               key={section}
               entries={result.entries}
+              groups={result.skinGroups}
+              activeGroup={selection?.kind === "champion" ? selection.id : undefined}
+              onGroupClick={(g) => select({ kind: "champion", id: g.key })}
               tileWidth={section === "champions" ? 104 : section === "skins" ? 132 : 92}
               aspect={section === "skins" ? 560 / 308 : 1}
               fit={section === "champions" || section === "skins" ? "cover" : "contain"}

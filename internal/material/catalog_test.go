@@ -161,6 +161,46 @@ func TestCatalogLatestLive(t *testing.T) {
 	if slots != "PQWER" {
 		t.Errorf("spell slots = %q", slots)
 	}
+	// 文本:背景、技巧、评分、属性、技能数值
+	if ahri.Blurb == "" || len(ahri.Lore) <= len(ahri.Blurb)/2 || len(ahri.AllyTips) == 0 || len(ahri.EnemyTips) == 0 ||
+		ahri.Partype != "法力" || ahri.Info.Magic == 0 || ahri.Stats["hp"] == 0 || ahri.Stats["attackrange"] == 0 {
+		t.Errorf("ahri text = blurb %d lore %d tips %d/%d %q %+v hp %v", len(ahri.Blurb), len(ahri.Lore), len(ahri.AllyTips), len(ahri.EnemyTips), ahri.Partype, ahri.Info, ahri.Stats["hp"])
+	}
+	if q := ahri.Spells[1]; q.Description == "" || q.Cooldown == "" || !strings.HasSuffix(q.Cost, "法力") || q.Range == "" {
+		t.Errorf("ahri Q = %+v", q)
+	}
+	if p := ahri.Spells[0]; p.Description == "" || p.Cooldown != "" || p.Cost != "" {
+		t.Errorf("ahri passive = %+v", p)
+	}
+	var ie *Item
+	for i := range cat.Items {
+		if cat.Items[i].ID == "3031" {
+			ie = &cat.Items[i]
+		}
+	}
+	if ie == nil || !strings.Contains(ie.Description, "<stats>") || len(ie.From) == 0 || ie.GoldBase == 0 || ie.GoldSell == 0 {
+		t.Errorf("item 3031 = %+v", ie)
+	}
+	if r := cat.RuneStyles[0].Runes[0]; r.ShortDesc == "" || r.LongDesc == "" {
+		t.Errorf("rune = %+v", r)
+	}
+	for _, sm := range cat.Summoners {
+		if sm.ID == "SummonerFlash" && (sm.Description == "" || sm.Cooldown == "" || sm.Level == 0) {
+			t.Errorf("flash = %+v", sm)
+		}
+	}
+	augDesc, champCost := 0, 0
+	for _, e := range cat.TFT {
+		if e.Category == "海克斯强化" && e.Description != "" {
+			augDesc++
+		}
+		if e.Category == "弈子" && e.Cost > 0 {
+			champCost++
+		}
+	}
+	if augDesc == 0 || champCost == 0 {
+		t.Errorf("tft augments with description %d, champions with cost %d", augDesc, champCost)
+	}
 	var base, chroma *Skin
 	for i := range ahri.Skins {
 		if ahri.Skins[i].Parent == nil && base == nil {
@@ -214,11 +254,44 @@ func TestCatalogOldVersionsLive(t *testing.T) {
 	if len(old.LegacyRunes) == 0 || len(old.Masteries) == 0 || len(old.RuneStyles) != 0 || len(old.TFT) != 0 {
 		t.Errorf("3.6.14 runes=%d masteries=%d styles=%d tft=%d", len(old.LegacyRunes), len(old.Masteries), len(old.RuneStyles), len(old.TFT))
 	}
+	if ahri.Lore == "" || old.LegacyRunes[0].Description == "" || old.Masteries[0].Description == "" {
+		t.Errorf("3.6.14 text: lore %d rune %q mastery %q", len(ahri.Lore), old.LegacyRunes[0].Description, old.Masteries[0].Description)
+	}
 	if _, err := s.Get(context.Background(), old.LegacyRunes[0].Icon); err != nil {
 		t.Errorf("legacy rune icon: %v", err)
 	}
 	if _, err := s.Get(context.Background(), ahri.Spells[1].Icon); err != nil {
 		t.Errorf("old spell icon: %v", err)
+	}
+}
+
+func TestSpellTextHelpers(t *testing.T) {
+	mk := func(costBurn, resource string) any {
+		return jsonObject{"costBurn": costBurn, "resource": resource}
+	}
+	for _, c := range []struct {
+		sp   any
+		want string
+	}{
+		{mk("55/65/75/85/95", "{{ cost }} {{ abilityresourcename }}"), "55/65/75/85/95 法力"},
+		{mk("70", "{{ cost }}法力"), "70法力"},
+		{mk("0", "无消耗"), "无消耗"},
+		{mk("0", "{{ cost }} {{ abilityresourcename }}"), ""},
+		{mk("10", "每秒{{ e2 }}生命值"), "10"},
+		{mk("", ""), ""},
+	} {
+		if got := spellCost(c.sp, "法力"); got != c.want {
+			t.Errorf("spellCost(%v) = %q, want %q", c.sp, got, c.want)
+		}
+	}
+	if zeroless("0") != "" || zeroless("0/0/0") != "" || zeroless("12/10/8") != "12/10/8" {
+		t.Error("zeroless")
+	}
+	if got := descriptionOf(jsonObject{"description": []any{"a", "b"}}); got != "【1/2】a<br>【2/2】b" {
+		t.Errorf("mastery description = %q", got)
+	}
+	if got := descriptionOf(jsonObject{"description": []any{"only"}}); got != "only" {
+		t.Errorf("single rank = %q", got)
 	}
 }
 
@@ -261,6 +334,20 @@ func TestCDragonArtLive(t *testing.T) {
 		}
 		if c.chromas && chromas == 0 {
 			t.Errorf("%s should have chromas", c.patch)
+		}
+		if c.patch == "14.10" {
+			described, lined := 0, 0
+			for _, sk := range art.Skins {
+				if sk.Description != "" {
+					described++
+				}
+				if len(sk.SkinLines) > 0 {
+					lined++
+				}
+			}
+			if described == 0 || lined == 0 || skin1.Rarity == "" {
+				t.Errorf("14.10 skin text: %d described, %d with lines, rarity %q", described, lined, skin1.Rarity)
+			}
 		}
 	}
 	if _, err := ChampionArtFor(ctx, s, "../x", "103"); err == nil {

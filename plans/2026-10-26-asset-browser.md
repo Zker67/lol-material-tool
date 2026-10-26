@@ -47,6 +47,8 @@
 - **对比**:前端对两个版本的目录按 id 求差,得到新增 / 改名 / 移除。
 - **历史原画**:`Assets.championArt` 读 CommunityDragon 对应 major.minor 版本的英雄 JSON,给出原画、未居中原画、加载图、炫彩与配色。
 - **导出**:`Tasks.exportAssets` 按中文名写文件,走 `task:progress` 进度,可取消;官方已不提供的文件计入 `Missing`,不中断。
+- **文字资料**:目录同时带出官方文本——英雄 `lore` / `blurb` / `allytips` / `enemytips` / `info` / `stats`、技能 `description` 与 `cooldownBurn` / `costBurn`(按 `resource` 模板拼出「55/65/75 法力」)/ `rangeBurn`、装备 `description` / `from` / `into` / `gold`、符文 `shortDesc` / `longDesc`、旧符文与天赋 `description`(天赋按等级逐条)、召唤师技能冷却与解锁等级、云顶 `cost` 与 `description` / `shortDescription`;皮肤背景、稀有度、绝版与系列来自 CommunityDragon(`skinlines.json`)。前端 `RichText` 把 Riot 标记解析成节点树再渲染(不用 innerHTML),官方没填的数值(`@HealAmount@`、`<placeholder>`)显示为「?」。
+- **皮肤与英雄**:皮肤页按英雄分组(组标题可点开英雄详情),支持只看某位英雄。
 - **前端状态**:TanStack Query 管请求缓存,Zustand 管分区 / 版本 / 选中项 / 筛选,TanStack Virtual 渲染上百张卡片的网格。
 
 ## 3. 验证
@@ -58,6 +60,7 @@
 | 目录 | 真实接口:16.21.1 与 3.6.14 的目录(3.6.14 阿狸皮肤数 > 0、有旧符文与天赋) | 通过 |
 | 历史原画 | 真实接口:CommunityDragon 7.1 / 10.1 / 14.10 的英雄原画 | 通过 |
 | 缓存与导出 | 真实接口拉取并写盘、TTL 规则、路径校验、导出文件名清洗 | 通过 |
+| 文字资料 | 真实接口:16.21.1 阿狸背景 / 技巧 / 评分 / 属性、Q 的冷却与「…法力」消耗、无尽之刃描述与合成路线、符文与闪现说明、海克斯强化说明与弈子费用;3.6.14 旧符文与天赋说明;CommunityDragon 14.10 皮肤背景、系列、稀有度;消耗模板与天赋多等级的单元测试;16.21.1 全部 3634 段文本经解析后无残留标记或占位符 | 通过 |
 | 前端 / 打包 | `bun run typecheck`、`bun run build` | 通过 |
 | 冒烟 | 启动 exe,经 `http://lmt.localhost` 缓存了 16.21.1 的 zh_CN JSON 与首屏头像 | 通过 |
 | 界面 | 侧边栏、网格、详情、对比角标、历史原画切换、炫彩、Ctrl+K、导出、下载页整包提示 | 待用户验收 |

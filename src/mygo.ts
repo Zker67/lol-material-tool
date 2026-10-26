@@ -38,6 +38,16 @@ export interface Champion {
   skins: Skin[];
   /** Spells 依次为被动、Q、W、E、R(数量随版本数据)。 */
   spells: Spell[];
+  /** Blurb 是背景故事摘要,Lore 是全文;文本可能含 <br> 等标记。 */
+  blurb: string;
+  lore: string;
+  allyTips: string[];
+  enemyTips: string[];
+  /** Partype 是资源类型,如 法力、能量。 */
+  partype: string;
+  info: ChampionInfo;
+  /** Stats 是基础属性,键同 Data Dragon(hp、hpperlevel、armor…)。 */
+  stats: Record<string, number>;
 }
 
 /** ChampionArt 是某个补丁下一位英雄的皮肤原画与炫彩。 */
@@ -45,6 +55,14 @@ export interface ChampionArt {
   /** Patch 是 CommunityDragon 补丁目录,如 16.21。 */
   patch: string;
   skins: SkinArt[];
+}
+
+/** ChampionInfo 是官方给英雄的四项评分(0–10)。 */
+export interface ChampionInfo {
+  attack: number;
+  defense: number;
+  magic: number;
+  difficulty: number;
 }
 
 /** Chroma 是一款炫彩。 */
@@ -78,16 +96,28 @@ export interface Item {
   icon: string;
   tags: string[];
   plaintext: string;
+  /** Description 是属性与效果说明(含 <stats>、<passive> 等标记)。 */
+  description: string;
+  /** Gold 是总价,GoldBase 是合成费,GoldSell 是出售价。 */
   gold: number;
+  goldBase: number;
+  goldSell: number;
+  /** From 是合成材料,Into 是可合成的装备(均为装备 ID)。 */
+  from: string[];
+  into: string[];
   /** InStore 为 false 的装备不在商店出售(模式专属、合成中间态等)。 */
   inStore: boolean;
 }
 
-/** NamedAsset 是只有名称与图标的素材:旧符文、天赋、召唤师技能。 */
+/** NamedAsset 是旧符文、天赋、召唤师技能。 */
 export interface NamedAsset {
   id: string;
   name: string;
   icon: string;
+  description: string;
+  /** Cooldown 与 Level 只有召唤师技能有:冷却秒数、解锁的召唤师等级。 */
+  cooldown: string;
+  level: number;
 }
 
 /** PackInfo 是某个版本全量包的可用情况。 */
@@ -123,6 +153,8 @@ export interface RuneEntry {
   icon: string;
   /** Slot 是所在的行,0 为基石。 */
   slot: number;
+  shortDesc: string;
+  longDesc: string;
 }
 
 /** RuneStyle 是一系符文(8.1 起)。 */
@@ -160,6 +192,14 @@ export interface SkinArt {
   tile: string;
   loadScreen: string;
   chromas: Chroma[];
+  /** Description 是皮肤背景故事(早期补丁可能为空)。 */
+  description: string;
+  /** Rarity 是稀有度原值,如 kEpic、kLegendary;普通皮肤为 kNoRarity。 */
+  rarity: string;
+  /** Legacy 表示绝版(经典)皮肤。 */
+  legacy: boolean;
+  /** SkinLines 是所属皮肤系列的名称。 */
+  skinLines: string[];
 }
 
 /** Spell 是一个技能。 */
@@ -169,6 +209,10 @@ export interface Spell {
   name: string;
   icon: string;
   description: string;
+  /** 各级数值,用 / 分隔;被动技能为空。 */
+  cooldown: string;
+  cost: string;
+  range: string;
 }
 
 /** Stage 是任务所处的阶段。 */
@@ -183,6 +227,11 @@ export interface TFTEntry {
   category: string;
   /** Set 是赛季编号(由 ID 前缀 TFT{n}_ 推出),推不出时为空。 */
   set: string;
+  /** Description 是说明(海克斯强化、地区传送门等才有)。 */
+  description: string;
+  /** Cost 是弈子费用;Tier 是小小英雄等原始 tier 字段。 */
+  cost: number;
+  tier: string;
 }
 
 // ---- Services ----

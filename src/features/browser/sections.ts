@@ -1,7 +1,7 @@
 import type { Catalog, Champion, ExportItem, Skin } from "@/mygo";
 import { diffEntries, matches, type DiffState } from "@/lib/assets";
 import type { DiffFilter } from "@/store/ui";
-import type { GridEntry } from "./AssetGrid";
+import type { GridEntry, GridGroup } from "./AssetGrid";
 
 /** 英雄定位(Data Dragon tags)的中文名 */
 export const ROLE_LABELS: Record<string, string> = {
@@ -13,6 +13,27 @@ export const ROLE_LABELS: Record<string, string> = {
   Support: "辅助",
 };
 
+/** 装备属性标签的中文名;早期版本的标签是全大写,比较时忽略大小写 */
+export const ITEM_TAGS: Record<string, string> = {
+  Boots: "鞋子",
+  Damage: "攻击力",
+  CriticalStrike: "暴击",
+  AttackSpeed: "攻速",
+  SpellDamage: "法术强度",
+  Mana: "法力",
+  Health: "生命值",
+  Armor: "护甲",
+  SpellBlock: "魔抗",
+  AbilityHaste: "技能急速",
+  LifeSteal: "生命偷取",
+  Consumable: "消耗品",
+  Trinket: "饰品",
+  Vision: "视野",
+};
+
+const ITEM_TAG_BY_LOWER = new Map(Object.entries(ITEM_TAGS).map(([k, v]) => [k.toLowerCase(), v]));
+export const itemTagLabel = (tag: string) => ITEM_TAG_BY_LOWER.get(tag.toLowerCase());
+
 /** 云顶分类,顺序同汉化配置 */
 export const TFT_CATEGORIES = ["弈子", "羁绊", "装备", "海克斯强化", "小小英雄", "棋盘皮肤", "地区传送门"];
 
@@ -23,9 +44,11 @@ export interface Filters {
   itemTag: string;
   tftCategory: string;
   tftSet: string;
+  /** 皮肤页只看某位英雄(英雄 ID),空为全部 */
+  skinChampion: string;
 }
 
-export const DEFAULT_FILTERS: Filters = { role: "", storeOnly: true, itemTag: "", tftCategory: "弈子", tftSet: "" };
+export const DEFAULT_FILTERS: Filters = { role: "", storeOnly: true, itemTag: "", tftCategory: "弈子", tftSet: "", skinChampion: "" };
 
 export const championFullName = (c: Champion) => `${c.name} ${c.title}`.trim();
 
@@ -91,9 +114,10 @@ interface FlatSkin {
   skin: Skin;
 }
 
-function flatSkins(c: Catalog, q: string): FlatSkin[] {
+function flatSkins(c: Catalog, q: string, championId: string): FlatSkin[] {
   const out: FlatSkin[] = [];
   for (const champion of c.champions) {
+    if (championId && champion.id !== championId) continue;
     for (const skin of champion.skins) {
       if (skin.parent != null) continue; // 炫彩在详情里看
       if (matches(q, skin.name, champion.name, champion.title, champion.id)) out.push({ champion, skin });
@@ -102,15 +126,22 @@ function flatSkins(c: Catalog, q: string): FlatSkin[] {
   return out;
 }
 
-export function skinsSection(cat: Catalog, cmp: Catalog | undefined, q: string, df: DiffFilter): SectionResult {
+/** 皮肤按英雄分组;每组标题是英雄,点标题看英雄详情 */
+export function skinsSection(
+  cat: Catalog,
+  cmp: Catalog | undefined,
+  q: string,
+  f: Filters,
+  df: DiffFilter,
+): SectionResult & { groups: GridGroup[] } {
   const toEntry = ({ champion, skin }: FlatSkin): GridEntry => ({
     id: skinKey(champion, skin),
     title: skin.name,
-    subtitle: championFullName(champion),
+    subtitle: skin.num === 0 ? "经典皮肤" : undefined,
     image: skin.loading,
   });
-  const list = flatSkins(cat, q);
-  const old = cmp ? flatSkins(cmp, q) : [];
+  const list = flatSkins(cat, q, f.skinChampion);
+  const old = cmp ? flatSkins(cmp, q, f.skinChampion) : [];
   const diff = cmp
     ? diffEntries(
         list.map((s) => ({ id: skinKey(s.champion, s.skin), name: s.skin.name })),
@@ -118,8 +149,19 @@ export function skinsSection(cat: Catalog, cmp: Catalog | undefined, q: string, 
       )
     : null;
   const removed = diff ? old.filter((s) => diff.state.get(skinKey(s.champion, s.skin)) === "removed").map(toEntry) : [];
+  const entries = withDiff(list.map(toEntry), removed, diff, df);
+
+  const owner = new Map([...old, ...list].map((s) => [skinKey(s.champion, s.skin), s.champion]));
+  const groups = new Map<string, GridGroup>();
+  for (const e of entries) {
+    const c = owner.get(e.id)!;
+    let g = groups.get(c.id);
+    if (!g) groups.set(c.id, (g = { key: c.id, title: c.name, subtitle: c.title, icon: c.icon, entries: [] }));
+    g.entries.push(e);
+  }
   return {
-    entries: withDiff(list.map(toEntry), removed, diff, df),
+    entries,
+    groups: [...groups.values()],
     total: list.length,
     exportItems: dedupe(
       list.map(({ champion, skin }) => ({
@@ -133,7 +175,7 @@ export function skinsSection(cat: Catalog, cmp: Catalog | undefined, q: string, 
 
 export function itemsSection(cat: Catalog, cmp: Catalog | undefined, q: string, f: Filters, df: DiffFilter): SectionResult {
   const pick = (c: Catalog) =>
-    c.items.filter((it) => (!f.storeOnly || it.inStore) && (!f.itemTag || it.tags.includes(f.itemTag)) && matches(q, it.name, it.plaintext, it.id));
+    c.items.filter((it) => (!f.storeOnly || it.inStore) && (!f.itemTag || it.tags.some((t) => t.toLowerCase() === f.itemTag.toLowerCase())) && matches(q, it.name, it.plaintext, it.id, it.description));
   const toEntry = (it: Catalog["items"][number]): GridEntry => ({
     id: it.id,
     title: it.name,
@@ -217,7 +259,7 @@ export function tftSection(cat: Catalog, cmp: Catalog | undefined, q: string, f:
   const toEntry = (e: Catalog["tft"][number]): GridEntry => ({
     id: tftKey(e),
     title: e.name,
-    subtitle: e.set ? `S${e.set}` : e.category,
+    subtitle: [e.cost ? `${e.cost} 费` : "", e.set ? `S${e.set}` : e.category].filter(Boolean).join(" · "),
     image: e.icon,
   });
   const list = pick(cat);
@@ -254,13 +296,4 @@ export function championExportItems(c: Champion): ExportItem[] {
     }
   }
   return dedupe(items);
-}
-
-/** 去掉技能描述里的 HTML 标记 */
-export function plainText(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .trim();
 }
