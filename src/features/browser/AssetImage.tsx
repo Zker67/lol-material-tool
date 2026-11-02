@@ -30,7 +30,7 @@ export function AssetImage({
 
   const image = (
     <div className={cn("relative overflow-hidden bg-muted", className)} style={style}>
-      {state === "loading" && src && <div className="absolute inset-0 animate-pulse bg-hex-bg-2" />}
+      {state === "loading" && src && <div className="hex-skeleton absolute inset-0" />}
       {(state === "error" || !src) && (
         <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/60" title="官方未提供该素材">
           <ImageOff className="size-5" />
@@ -46,9 +46,10 @@ export function AssetImage({
           onLoad={() => setState("loaded")}
           onError={() => setState("error")}
           className={cn(
-            "size-full transition-opacity duration-300",
+            // 加载完成后从轻微模糊、略放大过渡到清晰
+            "size-full transition-[opacity,filter,scale] duration-500 ease-out motion-reduce:transition-none",
             fit === "cover" ? "object-cover" : "object-contain",
-            state === "loaded" ? "opacity-100" : "opacity-0",
+            state === "loaded" ? "scale-100 opacity-100 blur-none" : "scale-[1.03] opacity-0 blur-sm",
           )}
         />
       )}

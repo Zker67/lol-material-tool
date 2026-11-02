@@ -48,7 +48,8 @@ function ToolButton({ label, onClick, disabled, children }: { label: string; onC
           {children}
         </button>
       </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
+      {/* 顶栏紧贴自绘标题栏,提示向下弹出才不会被挡住 */}
+      <TooltipContent side="bottom">{label}</TooltipContent>
     </Tooltip>
   );
 }
@@ -138,9 +139,10 @@ export function Lightbox({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
+      {/* 从自绘标题栏(h-9,层级高于弹窗)下方开始铺满,避免顶栏按钮被标题栏挡住 */}
       <DialogContent
         showCloseButton={false}
-        className="top-0 left-0 flex h-screen w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 bg-black/92 p-0 ring-0 sm:max-w-none"
+        className="top-9 left-0 flex h-[calc(100vh-2.25rem)] w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 bg-black/92 p-0 ring-0 sm:max-w-none"
       >
         <DialogDescription className="sr-only">滚轮缩放,拖动平移,左右方向键切换</DialogDescription>
 

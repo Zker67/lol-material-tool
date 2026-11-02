@@ -136,3 +136,29 @@
     @apply bg-hex-gold;
   }
 }
+
+/* 素材图加载占位:深蓝底上一道金色微光斜向扫过 */
+@keyframes hex-shimmer {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
+}
+
+@utility hex-skeleton {
+  background-color: var(--color-hex-bg-2);
+  background-image: linear-gradient(
+    105deg,
+    transparent 35%,
+    color-mix(in srgb, var(--color-hex-gold) 14%, transparent) 50%,
+    transparent 65%
+  );
+  background-size: 250% 100%;
+  animation: hex-shimmer 1.6s ease-in-out infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
