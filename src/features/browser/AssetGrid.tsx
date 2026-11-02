@@ -24,7 +24,7 @@ export interface GridGroup {
   entries: GridEntry[];
 }
 
-const DIFF_BADGE: Record<DiffState, { label: string; className: string }> = {
+export const DIFF_BADGE: Record<DiffState, { label: string; className: string }> = {
   added: { label: "新增", className: "bg-hex-blue/90 text-hex-bg" },
   renamed: { label: "改名", className: "bg-hex-gold/90 text-hex-bg" },
   removed: { label: "移除", className: "bg-destructive/90 text-white" },

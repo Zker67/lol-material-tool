@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { matches, useCatalog } from "@/lib/assets";
 import { useUI, type Section, type Selection } from "@/store/ui";
 import { AssetImage } from "./AssetImage";
@@ -44,17 +44,17 @@ export function CommandPalette() {
     const skins: Hit[] = [];
     for (const c of cat.champions) {
       if (champions.length < LIMIT && matches(query, c.name, c.title, c.id))
-        champions.push({ key: `c-${c.id}`, title: championFullName(c), subtitle: c.id, icon: c.icon, section: "champions", selection: { kind: "champion", id: c.id } });
+        champions.push({ key: `c-${c.id}`, title: championFullName(c), subtitle: "", icon: c.icon, section: "champions", selection: { kind: "champion", id: c.id } });
       for (const s of c.skins) {
         if (skins.length >= LIMIT || s.parent != null || !matches(query, s.name)) continue;
         const id = skinKey(c, s);
-        skins.push({ key: `s-${id}`, title: s.name, subtitle: championFullName(c), icon: s.tile, section: "skins", selection: { kind: "champion", id: c.id, skinId: id } });
+        skins.push({ key: `s-${id}`, title: s.name, subtitle: championFullName(c), icon: s.tile, section: "champions", selection: { kind: "champion", id: c.id, skinId: id } });
       }
     }
     const items = cat.items
       .filter((it) => it.inStore && matches(query, it.name, it.id))
       .slice(0, LIMIT)
-      .map<Hit>((it) => ({ key: `i-${it.id}`, title: it.name, subtitle: `装备 · ${it.id}`, icon: it.icon, section: "items", selection: { kind: "item", id: it.id } }));
+      .map<Hit>((it) => ({ key: `i-${it.id}`, title: it.name, subtitle: it.gold ? `${it.gold} 金币` : "", icon: it.icon, section: "items", selection: { kind: "item", id: it.id } }));
     const runes = cat.runeStyles
       .flatMap((st) => st.runes.map((r) => ({ r, st })))
       .filter(({ r }) => matches(query, r.name))
@@ -90,21 +90,24 @@ export function CommandPalette() {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen} title="搜索素材" description="搜索英雄、皮肤、装备、符文与云顶素材">
-      <CommandInput value={query} onValueChange={setQuery} placeholder={`在 ${version ?? ""} 中搜索英雄、皮肤、装备…`} />
-      <CommandList className="max-h-[60vh]">
-        <CommandEmpty>{query.trim() ? "没有找到" : "输入名称、称号或英文 ID"}</CommandEmpty>
-        {groups.map((g) => (
-          <CommandGroup key={g.title} heading={g.title}>
-            {g.hits.map((h) => (
-              <CommandItem key={h.key} value={h.key} onSelect={() => go(h)} className="gap-2.5">
-                <AssetImage path={h.icon} alt={h.title} className="size-7 shrink-0 rounded-sm" />
-                <span className="truncate">{h.title}</span>
-                <span className="ml-auto truncate text-xs text-muted-foreground">{h.subtitle}</span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        ))}
-      </CommandList>
+      {/* 结果已由 groups 筛好,关掉 cmdk 自带的按 value 过滤 */}
+      <Command shouldFilter={false}>
+        <CommandInput value={query} onValueChange={setQuery} placeholder={`在 ${version ?? ""} 中搜索英雄、皮肤、装备…`} />
+        <CommandList className="max-h-[60vh]">
+          <CommandEmpty>{query.trim() ? "没有找到" : "输入名称、称号或英文名"}</CommandEmpty>
+          {groups.map((g) => (
+            <CommandGroup key={g.title} heading={g.title}>
+              {g.hits.map((h) => (
+                <CommandItem key={h.key} value={h.key} onSelect={() => go(h)} className="gap-2.5">
+                  <AssetImage path={h.icon} alt={h.title} className="size-7 shrink-0 rounded-sm" />
+                  <span className="truncate">{h.title}</span>
+                  <span className="ml-auto truncate text-xs text-muted-foreground">{h.subtitle}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ))}
+        </CommandList>
+      </Command>
     </CommandDialog>
   );
 }

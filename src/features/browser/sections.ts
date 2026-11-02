@@ -34,9 +34,6 @@ export const ITEM_TAGS: Record<string, string> = {
 const ITEM_TAG_BY_LOWER = new Map(Object.entries(ITEM_TAGS).map(([k, v]) => [k.toLowerCase(), v]));
 export const itemTagLabel = (tag: string) => ITEM_TAG_BY_LOWER.get(tag.toLowerCase());
 
-/** 云顶分类,顺序同汉化配置 */
-export const TFT_CATEGORIES = ["弈子", "羁绊", "装备", "海克斯强化", "小小英雄", "棋盘皮肤", "地区传送门"];
-
 /** 各分区的筛选条件 */
 export interface Filters {
   role: string;
@@ -44,11 +41,23 @@ export interface Filters {
   itemTag: string;
   tftCategory: string;
   tftSet: string;
-  /** 皮肤页只看某位英雄(英雄 ID),空为全部 */
+  /** 英雄分区按英雄还是按皮肤显示 */
+  championView: ChampionView;
+  /** 皮肤显示时只看某位英雄(英雄 ID),空为全部 */
   skinChampion: string;
 }
 
-export const DEFAULT_FILTERS: Filters = { role: "", storeOnly: true, itemTag: "", tftCategory: "弈子", tftSet: "", skinChampion: "" };
+export type ChampionView = "champions" | "skins";
+
+export const DEFAULT_FILTERS: Filters = {
+  role: "",
+  storeOnly: true,
+  itemTag: "",
+  tftCategory: "弈子",
+  tftSet: "",
+  championView: "champions",
+  skinChampion: "",
+};
 
 export const championFullName = (c: Champion) => `${c.name} ${c.title}`.trim();
 
@@ -114,10 +123,11 @@ interface FlatSkin {
   skin: Skin;
 }
 
-function flatSkins(c: Catalog, q: string, championId: string): FlatSkin[] {
+function flatSkins(c: Catalog, q: string, f: Filters): FlatSkin[] {
   const out: FlatSkin[] = [];
   for (const champion of c.champions) {
-    if (championId && champion.id !== championId) continue;
+    if (f.skinChampion && champion.id !== f.skinChampion) continue;
+    if (f.role && !champion.tags.includes(f.role)) continue;
     for (const skin of champion.skins) {
       if (skin.parent != null) continue; // 炫彩在详情里看
       if (matches(q, skin.name, champion.name, champion.title, champion.id)) out.push({ champion, skin });
@@ -140,8 +150,8 @@ export function skinsSection(
     subtitle: skin.num === 0 ? "经典皮肤" : undefined,
     image: skin.loading,
   });
-  const list = flatSkins(cat, q, f.skinChampion);
-  const old = cmp ? flatSkins(cmp, q, f.skinChampion) : [];
+  const list = flatSkins(cat, q, f);
+  const old = cmp ? flatSkins(cmp, q, f) : [];
   const diff = cmp
     ? diffEntries(
         list.map((s) => ({ id: skinKey(s.champion, s.skin), name: s.skin.name })),
@@ -179,7 +189,7 @@ export function itemsSection(cat: Catalog, cmp: Catalog | undefined, q: string, 
   const toEntry = (it: Catalog["items"][number]): GridEntry => ({
     id: it.id,
     title: it.name,
-    subtitle: it.gold ? `${it.gold} 金币` : it.id,
+    subtitle: it.gold ? `${it.gold} 金币` : undefined,
     image: it.icon,
   });
   const list = pick(cat);
@@ -192,19 +202,37 @@ export function itemsSection(cat: Catalog, cmp: Catalog | undefined, q: string, 
 }
 
 /** 符文分组:新符文按系,旧版本为旧符文与天赋 */
+/** 符文树的一行:slot 0 为基石 */
+export interface RuneTreeRow {
+  slot: number;
+  entries: GridEntry[];
+}
+
 export interface RuneGroup {
   key: string;
   title: string;
   icon?: string;
   entries: GridEntry[];
+  /** 符文系(7.24 起的符文树)才有:系本身 + 按行排好的符文 */
+  head?: GridEntry;
+  rows?: RuneTreeRow[];
 }
 
 export function runesSection(cat: Catalog, cmp: Catalog | undefined, q: string, df: DiffFilter): { groups: RuneGroup[]; exportItems: ExportItem[]; total: number } {
-  type Row = { id: string; name: string; icon: string; group: string; groupTitle: string; groupIcon?: string; folder: string };
+  type Row = { id: string; name: string; icon: string; group: string; groupTitle: string; groupIcon?: string; folder: string; slot?: number };
   const rows = (c: Catalog): Row[] => [
     ...c.runeStyles.flatMap((st) => [
       { id: `style-${st.id}`, name: st.name, icon: st.icon, group: st.id, groupTitle: st.name, groupIcon: st.icon, folder: `符文/${st.name}` },
-      ...st.runes.map((r) => ({ id: r.id, name: r.name, icon: r.icon, group: st.id, groupTitle: st.name, groupIcon: st.icon, folder: `符文/${st.name}` })),
+      ...st.runes.map((r) => ({
+        id: r.id,
+        name: r.name,
+        icon: r.icon,
+        group: st.id,
+        groupTitle: st.name,
+        groupIcon: st.icon,
+        folder: `符文/${st.name}`,
+        slot: r.slot,
+      })),
     ]),
     ...c.legacyRunes.map((r) => ({ id: `rune-${r.id}`, name: r.name, icon: r.icon, group: "legacyRunes", groupTitle: "符文(7.23 及以前)", folder: "符文" })),
     ...c.masteries.map((m) => ({ id: `mastery-${m.id}`, name: m.name, icon: m.icon, group: "masteries", groupTitle: "天赋(7.23 及以前)", folder: "天赋" })),
@@ -225,7 +253,16 @@ export function runesSection(cat: Catalog, cmp: Catalog | undefined, q: string, 
     let g = groups.find((x) => x.key === r.group);
     if (!g) groups.push((g = { key: r.group, title: r.groupTitle, icon: r.groupIcon, entries: [] }));
     g.entries.push(e);
+    // 符文系:系本身做树头,符文按行归位
+    if (e.id.startsWith("style-")) g.head = e;
+    else if (r.slot != null) {
+      g.rows ??= [];
+      let row = g.rows.find((x) => x.slot === r.slot);
+      if (!row) g.rows.push((row = { slot: r.slot, entries: [] }));
+      row.entries.push(e);
+    }
   }
+  for (const g of groups) g.rows?.sort((a, b) => a.slot - b.slot);
   return {
     groups,
     total: list.length,

@@ -3,6 +3,7 @@ import { TitleBar } from "./components/TitleBar";
 import { Sidebar } from "./components/Sidebar";
 import { Browser } from "./features/browser/Browser";
 import { CommandPalette } from "./features/browser/CommandPalette";
+import { SaveDirDialog } from "./components/SaveDirDialog";
 import { BROWSER_SECTIONS, useUI } from "./store/ui";
 import { Tasks, type PackInfo } from "./mygo";
 import { DownloadPanel } from "./components/panels/DownloadPanel";
@@ -179,6 +180,7 @@ function App() {
         </main>
       </div>
       <CommandPalette />
+      <SaveDirDialog />
     </div>
   );
 }

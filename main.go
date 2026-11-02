@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -104,10 +105,12 @@ func (t *Tasks) CancelTask() {
 	}
 }
 
-// Assets 是素材浏览器的数据:各版本目录、历史原画与缓存。
+// Assets 是素材浏览器的数据:各版本目录、历史原画、缓存,以及单张素材的保存与复制。
 type Assets struct {
 	store    *material.Store
 	catalogs *material.Catalogs
+	// settingsFile 保存固定保存位置等用户设置
+	settingsFile string
 
 	mu      sync.Mutex
 	patches []string
@@ -159,7 +162,14 @@ func (a *Assets) SaveAs(ctx context.Context, path string, suggestedName string) 
 	if err != nil {
 		return "", err
 	}
-	opts := mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), DefaultPath: filepath.Base(suggestedName)}
+	defaultName, err := material.SaveName(suggestedName, local)
+	if err != nil {
+		return "", err
+	}
+	opts := mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), DefaultPath: defaultName}
+	if dir := a.SaveDir(); dir != "" {
+		opts.DefaultPath = filepath.Join(dir, defaultName)
+	}
 	if ext := strings.TrimPrefix(filepath.Ext(local), "."); ext != "" {
 		opts.Filters = []mygo.FileFilter{{Name: "图片", Extensions: []string{ext}}}
 	}
@@ -172,6 +182,53 @@ func (a *Assets) SaveAs(ctx context.Context, path string, suggestedName string) 
 		return "", err
 	}
 	return dest, os.WriteFile(dest, data, 0o644)
+}
+
+// SaveDir 返回固定保存位置,还没设置时返回 ""。
+func (a *Assets) SaveDir() string {
+	s, err := material.LoadSettings(a.settingsFile)
+	if err != nil {
+		return ""
+	}
+	return s.SaveDir
+}
+
+// SetSaveDir 设置固定保存位置;传 "" 表示清除,之后每次保存都会先询问。
+func (a *Assets) SetSaveDir(dir string) error {
+	if dir != "" {
+		if info, err := os.Stat(dir); err != nil || !info.IsDir() {
+			return fmt.Errorf("文件夹不存在:%s", dir)
+		}
+	}
+	s, _ := material.LoadSettings(a.settingsFile)
+	s.SaveDir = dir
+	return material.SaveSettings(a.settingsFile, s)
+}
+
+// Save 把一项素材直接存到固定保存位置,重名时追加序号,返回保存的完整路径。
+func (a *Assets) Save(ctx context.Context, path string, name string) (string, error) {
+	dir := a.SaveDir()
+	if dir == "" {
+		return "", errors.New("还没有设置保存位置")
+	}
+	local, err := a.store.Get(ctx, path)
+	if err != nil {
+		return "", err
+	}
+	return material.SaveCopy(local, dir, name)
+}
+
+// CopyImage 把一项素材以 PNG 放到系统剪贴板。
+func (a *Assets) CopyImage(ctx context.Context, path string) error {
+	local, err := a.store.Get(ctx, path)
+	if err != nil {
+		return err
+	}
+	data, err := material.PNGBytes(local)
+	if err != nil {
+		return err
+	}
+	return mygo.Clipboard.WriteImage(data)
 }
 
 // CacheInfo 是素材缓存的位置与占用。
@@ -216,6 +273,25 @@ func (Desktop) OpenURL(url string) error {
 	return mygo.Shell.OpenExternal(url)
 }
 
+// ShowInFolder 在文件管理器中打开文件所在的文件夹并选中它。
+func (Desktop) ShowInFolder(path string) {
+	mygo.Shell.ShowItemInFolder(path)
+}
+
+// CopyText 把文本放到系统剪贴板。
+func (Desktop) CopyText(text string) {
+	mygo.Clipboard.WriteText(text)
+}
+
+// settingsFile 返回用户设置文件:应用数据目录下的 settings.json。
+func settingsFile() string {
+	dir, err := mygo.App.Path(mygo.PathUserData)
+	if err != nil {
+		dir = filepath.Join(os.TempDir(), "lol-material-tool")
+	}
+	return filepath.Join(dir, "settings.json")
+}
+
 // cacheDir 返回素材缓存目录:应用的缓存目录下的 assets/。
 func cacheDir() string {
 	dir, err := mygo.App.Path(mygo.PathCache)
@@ -227,7 +303,7 @@ func cacheDir() string {
 
 func main() {
 	store := material.NewStore(cacheDir())
-	mygo.Bind(&Tasks{store: store}, &Assets{store: store, catalogs: material.NewCatalogs(store)}, Desktop{})
+	mygo.Bind(&Tasks{store: store}, &Assets{store: store, catalogs: material.NewCatalogs(store), settingsFile: settingsFile()}, Desktop{})
 	// 页面经 lmt://localhost/ddragon/...(Windows 上为 http://lmt.localhost/...)加载素材
 	if err := mygo.Protocol.Handle("lmt", store); err != nil {
 		log.Fatal(err)

@@ -28,7 +28,7 @@ export function ChampionPicker({ champions, value, onChange }: { champions: Cham
       </PopoverTrigger>
       <PopoverContent className="w-60 p-0" align="start">
         <Command>
-          <CommandInput placeholder="搜索英雄名 / 称号 / 英文 ID…" />
+          <CommandInput placeholder="搜索英雄名 / 称号 / 英文名…" />
           <CommandList className="max-h-80">
             <CommandEmpty>没有该英雄</CommandEmpty>
             <CommandGroup>

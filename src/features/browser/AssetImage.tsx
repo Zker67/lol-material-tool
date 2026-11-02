@@ -1,9 +1,11 @@
 import { useState, type CSSProperties } from "react";
-import { ImageOff } from "lucide-react";
+import { Copy, Download, FolderInput, ImageOff, Type } from "lucide-react";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { cn } from "@/lib/utils";
 import { assetURL } from "@/lib/assets";
+import { copyImage, copyText, saveAsset, saveAssetAs } from "@/lib/save";
 
-/** 素材图:加载中显示占位,失败(官方已不提供)显示提示图标 */
+/** 素材图:加载中显示占位,失败(官方已不提供)显示提示图标;右键可复制、保存 */
 export function AssetImage({
   path,
   alt,
@@ -12,6 +14,7 @@ export function AssetImage({
   fit = "cover",
 }: {
   path: string | null | undefined;
+  /** 素材名称,也用作保存的文件名;为空(装饰用的模糊底图)时没有右键菜单 */
   alt: string;
   className?: string;
   style?: CSSProperties;
@@ -25,7 +28,7 @@ export function AssetImage({
   }
   const src = assetURL(path);
 
-  return (
+  const image = (
     <div className={cn("relative overflow-hidden bg-muted", className)} style={style}>
       {state === "loading" && src && <div className="absolute inset-0 animate-pulse bg-hex-bg-2" />}
       {(state === "error" || !src) && (
@@ -50,5 +53,28 @@ export function AssetImage({
         />
       )}
     </div>
+  );
+
+  if (!path || !alt || state === "error") return image;
+  const name = alt.replace(/\.(jpe?g|png)$/i, "");
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{image}</ContextMenuTrigger>
+      <ContextMenuContent className="w-44">
+        <ContextMenuItem onSelect={() => copyImage(path)}>
+          <Copy /> 复制图片
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={() => saveAsset(path, name)}>
+          <Download /> 保存
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={() => saveAssetAs(path, name)}>
+          <FolderInput /> 另存为…
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onSelect={() => copyText(name)}>
+          <Type /> 复制名称
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

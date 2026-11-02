@@ -275,7 +275,7 @@ export const Tasks = {
   },
 } as const;
 
-/** Assets 是素材浏览器的数据:各版本目录、历史原画与缓存。 */
+/** Assets 是素材浏览器的数据:各版本目录、历史原画、缓存,以及单张素材的保存与复制。 */
 export const Assets = {
   /** CacheInfo 返回素材缓存的位置与占用的字节数。 */
   cacheInfo(): Promise<CacheInfo> {
@@ -293,18 +293,38 @@ export const Assets = {
   clearCache(): Promise<void> {
     return call("Assets.ClearCache");
   },
+  /** CopyImage 把一项素材以 PNG 放到系统剪贴板。 */
+  copyImage(path: string): Promise<void> {
+    return call("Assets.CopyImage", path);
+  },
   /** HistoryPatch 返回某个版本对应的 CommunityDragon 补丁,没有时返回 ""(7.1 之前)。 */
   historyPatch(version: string): Promise<string> {
     return call("Assets.HistoryPatch", version);
+  },
+  /** Save 把一项素材直接存到固定保存位置,重名时追加序号,返回保存的完整路径。 */
+  save(path: string, name: string): Promise<string> {
+    return call("Assets.Save", path, name);
   },
   /** SaveAs 让用户选择位置,把一项素材另存过去;取消时返回 ""。 */
   saveAs(path: string, suggestedName: string): Promise<string> {
     return call("Assets.SaveAs", path, suggestedName);
   },
+  /** SaveDir 返回固定保存位置,还没设置时返回 ""。 */
+  saveDir(): Promise<string> {
+    return call("Assets.SaveDir");
+  },
+  /** SetSaveDir 设置固定保存位置;传 "" 表示清除,之后每次保存都会先询问。 */
+  setSaveDir(dir: string): Promise<void> {
+    return call("Assets.SetSaveDir", dir);
+  },
 } as const;
 
 /** Desktop 是前端调用的系统能力:选择目录、打开文件夹与链接。 */
 export const Desktop = {
+  /** CopyText 把文本放到系统剪贴板。 */
+  copyText(text: string): Promise<void> {
+    return call("Desktop.CopyText", text);
+  },
   /** OpenPath 用系统默认程序打开文件或文件夹。 */
   openPath(path: string): Promise<void> {
     return call("Desktop.OpenPath", path);
@@ -316,6 +336,10 @@ export const Desktop = {
   /** PickDirectory 让用户选择一个目录,取消时返回 ""。 */
   pickDirectory(): Promise<string> {
     return call("Desktop.PickDirectory");
+  },
+  /** ShowInFolder 在文件管理器中打开文件所在的文件夹并选中它。 */
+  showInFolder(path: string): Promise<void> {
+    return call("Desktop.ShowInFolder", path);
   },
 } as const;
 
