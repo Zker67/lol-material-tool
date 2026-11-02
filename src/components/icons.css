@@ -1,95 +1,292 @@
 /*
- * 自绘图标的动画:所在按钮悬停时播放一次,选中时循环。
+ * 自绘图标的动画,两套互不相同:
+ *   h-*  所在按钮悬停时播放一次的「激活」动作(弹出、翻转、砸下、飞转……);
+ *   l-*  选中时循环的「待机」动作(呼吸、闪烁、依次点亮、摆动……),外加整个图标的呼吸光晕。
  * 选中由按钮的 aria-current="page"(导航项)或 aria-checked="true"(游戏切换)表示。
- * 图标里带 .anim 的部件按 a-* 类决定动作;关键帧首尾都是静止状态,循环与中断都不跳。
+ * 同一部件只挂一种动作;需要两种时用嵌套的 <g> 分开,所以悬停与循环不会互相覆盖。
+ * 一次性动作的终点就是静止状态,循环动作首尾相接,中断都不跳。
  */
 
 .ic * {
   transform-box: fill-box;
   transform-origin: center;
 }
-.ic .o-top {
-  transform-origin: top center;
-}
-
-.ic .a-bob { --ic-a: ic-bob; }
-.ic .a-pulse { --ic-a: ic-pulse; }
-.ic .a-flash { --ic-a: ic-flash; }
-.ic .a-spin { --ic-a: ic-spin; }
-.ic .a-swing { --ic-a: ic-swing; }
-.ic .a-drop { --ic-a: ic-drop; }
-.ic .a-rise { --ic-a: ic-rise; }
-.ic .a-blink { --ic-a: ic-blink; }
-.ic .a-twinkle { --ic-a: ic-twinkle; }
-.ic .a-in-l { --ic-a: ic-in-l; }
-.ic .a-in-r { --ic-a: ic-in-r; }
-.ic .a-slide { --ic-a: ic-slide; }
-.ic .a-needle { --ic-a: ic-needle; }
-.ic .a-draw { --ic-a: ic-draw; }
-.ic .a-sweep { --ic-a: ic-sweep; }
 
 @media (prefers-reduced-motion: no-preference) {
-  :where(button:hover, a:hover) .ic .anim {
-    animation: var(--ic-a) 0.8s ease-in-out;
+  /* :where 不计优先级,选中规则(下面)总能盖过它 */
+  :where(button:hover, a:hover) .ic {
+    .h-pop { animation: ic-h-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+    .h-sweep { animation: ic-h-sweep 0.7s ease-out both; }
+    .h-draw { animation: ic-h-draw 0.7s ease-out both; }
+    .h-drop { animation: ic-h-drop 0.55s ease-out both; }
+    .h-visor { animation: ic-h-visor 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+    .h-wing-l { animation: ic-h-wing-l 0.6s ease-out both; }
+    .h-wing-r { animation: ic-h-wing-r 0.6s ease-out both; }
+    .h-flip { animation: ic-h-flip 0.6s ease-in-out both; }
+    .h-burst { animation: ic-h-burst 0.6s ease-out both; }
+    .h-turn { animation: ic-h-turn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+    .h-blink { animation: ic-h-blink 0.5s ease-out both; }
+    .h-trail { animation: ic-h-trail 0.6s ease-out both; }
+    .h-hop { animation: ic-h-hop 0.65s ease-out both; }
+    .h-apart-l { animation: ic-h-apart-l 0.6s ease-in-out both; }
+    .h-apart-r { animation: ic-h-apart-r 0.6s ease-in-out both; }
+    .h-strike { animation: ic-h-strike 0.6s ease-in-out both; }
+    .h-spark { animation: ic-h-spark 0.45s ease-out both; }
+    .h-rise { animation: ic-h-rise 0.6s ease-in-out both; }
+    .h-tilt { animation: ic-h-tilt 0.7s ease-in-out both; }
+    .h-wiggle-l { animation: ic-h-wiggle-l 0.6s ease-in-out both; }
+    .h-wiggle-r { animation: ic-h-wiggle-r 0.6s ease-in-out both; }
+    .h-open { animation: ic-h-open 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+    .h-sink { animation: ic-h-sink 0.55s ease-out both; }
+    .h-slide { animation: ic-h-slide 0.45s ease-out both; }
+    .h-needle { animation: ic-h-needle 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+    .h-page { animation: ic-h-page 0.7s ease-in-out both; }
   }
-  :where([aria-current="page"], [aria-checked="true"]) .ic .anim {
-    animation: var(--ic-a) 2.6s ease-in-out infinite;
-  }
-  .ic .anim.a-spin,
-  .ic .anim.a-draw {
-    animation-timing-function: linear;
+
+  /* 选中项被悬停时,同时挂着两种动作的部件保持循环 */
+  :is([aria-current="page"], [aria-checked="true"]) .ic {
+    animation: ic-l-aura 2.8s ease-in-out infinite;
+
+    .l-sweep { animation: ic-l-sweep 3.6s ease-in-out infinite; }
+    .l-pulse { animation: ic-l-pulse 2.4s ease-in-out infinite; }
+    .l-breathe { animation: ic-l-breathe 2.4s ease-in-out infinite; }
+    .l-twinkle { animation: ic-l-twinkle 2.8s ease-in-out infinite; }
+    .l-seq { animation: ic-l-seq 2.4s ease-in-out infinite; }
+    .l-flicker { animation: ic-l-flicker 3s linear infinite; }
+    .l-ripple { animation: ic-l-ripple 2.2s ease-out infinite; }
+    .l-alt { animation: ic-l-alt 2.6s ease-in-out infinite; }
+    .l-ember { animation: ic-l-ember 2.1s ease-out infinite; }
+    .l-cascade { animation: ic-l-cascade 1.8s ease-in-out infinite; }
+    .l-blink { animation: ic-l-blink 3.6s ease-in-out infinite; }
+    .l-float { animation: ic-l-float 3s ease-in-out infinite; }
+    .l-wave { animation: ic-l-wave 2s ease-in-out infinite; }
+    .l-glow { animation: ic-l-glow 2.6s ease-in-out infinite; }
+    .l-spin { animation: ic-l-spin 4s linear infinite; }
+    .l-bob { animation: ic-l-bob 1.6s ease-in-out infinite; }
+    .l-sort { animation: ic-l-sort 2.4s ease-in-out infinite; }
+    .l-sway { animation: ic-l-sway 3s ease-in-out infinite; }
   }
 }
 
-@keyframes ic-bob {
-  50% { transform: translateY(-2px); }
+/* ---------- 悬停:一次性 ---------- */
+
+@keyframes ic-h-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.16); }
+  100% { transform: scale(1); }
 }
-@keyframes ic-pulse {
-  50% { transform: scale(1.18); }
+@keyframes ic-h-sweep {
+  from { transform: translateX(0); }
+  to { transform: translateX(34px); }
 }
-@keyframes ic-flash {
-  50% { opacity: 0.35; }
+@keyframes ic-h-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
 }
-@keyframes ic-spin {
+@keyframes ic-h-drop {
+  0% { transform: translateY(-4px); opacity: 0; }
+  55% { transform: translateY(0.8px); opacity: 1; }
+  78% { transform: translateY(-0.4px); }
+  100% { transform: translateY(0); }
+}
+@keyframes ic-h-visor {
+  0% { transform: scaleX(0.1); opacity: 0.2; }
+  100% { transform: scaleX(1); opacity: 1; }
+}
+@keyframes ic-h-wing-l {
+  0%, 100% { transform: rotate(0); }
+  40% { transform: rotate(-22deg); }
+  70% { transform: rotate(6deg); }
+}
+@keyframes ic-h-wing-r {
+  0%, 100% { transform: rotate(0); }
+  40% { transform: rotate(22deg); }
+  70% { transform: rotate(-6deg); }
+}
+@keyframes ic-h-flip {
+  0% { transform: scaleX(1); }
+  25% { transform: scaleX(0.05); }
+  50% { transform: scaleX(-1); }
+  75% { transform: scaleX(0.05); }
+  100% { transform: scaleX(1); }
+}
+@keyframes ic-h-burst {
+  0% { transform: scale(0) rotate(0); opacity: 0; }
+  50% { transform: scale(1.6) rotate(45deg); opacity: 1; }
+  100% { transform: scale(1) rotate(90deg); opacity: 1; }
+}
+@keyframes ic-h-turn {
+  0% { transform: rotate(0) scale(1); }
+  50% { transform: rotate(60deg) scale(1.2); }
+  100% { transform: rotate(90deg) scale(1); }
+}
+@keyframes ic-h-blink {
+  0% { transform: translateX(-6px); opacity: 0; }
+  40% { transform: translateX(1px); opacity: 1; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+@keyframes ic-h-trail {
+  0% { transform: scaleX(1); opacity: 0.6; }
+  35% { transform: scaleX(1.6); opacity: 1; }
+  70% { transform: scaleX(0); opacity: 0; }
+  100% { transform: scaleX(1); opacity: 1; }
+}
+@keyframes ic-h-hop {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(-3.5px) scale(1); }
+  60% { transform: translateY(0) scale(1.1, 0.86); }
+  80% { transform: translateY(0) scale(0.97, 1.04); }
+  100% { transform: translateY(0) scale(1); }
+}
+@keyframes ic-h-apart-l {
+  0%, 100% { transform: translateX(0); }
+  40% { transform: translateX(-2.2px); }
+  70% { transform: translateX(0.6px); }
+}
+@keyframes ic-h-apart-r {
+  0%, 100% { transform: translateX(0); }
+  40% { transform: translateX(2.2px); }
+  70% { transform: translateX(-0.6px); }
+}
+@keyframes ic-h-strike {
+  0%, 100% { transform: rotate(0); }
+  35% { transform: rotate(-30deg); }
+  55% { transform: rotate(22deg); }
+  75% { transform: rotate(-4deg); }
+}
+@keyframes ic-h-spark {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.35); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes ic-h-rise {
+  0% { transform: translateY(0); opacity: 1; }
+  40% { transform: translateY(-3.5px); opacity: 0; }
+  41% { transform: translateY(3.5px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes ic-h-tilt {
+  0%, 100% { transform: rotate(0); }
+  35% { transform: rotate(-9deg); }
+  70% { transform: rotate(5deg); }
+}
+@keyframes ic-h-wiggle-l {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-18deg); }
+  50% { transform: rotate(12deg); }
+  75% { transform: rotate(-6deg); }
+}
+@keyframes ic-h-wiggle-r {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(18deg); }
+  50% { transform: rotate(-12deg); }
+  75% { transform: rotate(6deg); }
+}
+@keyframes ic-h-open {
+  0% { transform: scale(0) rotate(-200deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+@keyframes ic-h-sink {
+  0%, 45%, 100% { transform: translateY(0); }
+  62% { transform: translateY(1.4px); }
+  82% { transform: translateY(-0.3px); }
+}
+@keyframes ic-h-slide {
+  0% { transform: translateX(-3.5px); opacity: 0; }
+  70% { transform: translateX(0.5px); opacity: 1; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+@keyframes ic-h-needle {
+  0% { transform: rotate(0); }
+  60% { transform: rotate(410deg); }
+  82% { transform: rotate(345deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes ic-h-page {
+  0% { transform: scaleX(1); opacity: 1; }
+  50% { transform: scaleX(-1); opacity: 1; }
+  51% { transform: scaleX(-1); opacity: 0; }
+  52% { transform: scaleX(1); opacity: 0; }
+  100% { transform: scaleX(1); opacity: 1; }
+}
+
+/* ---------- 选中:循环 ---------- */
+
+@keyframes ic-l-aura {
+  0%, 100% { filter: drop-shadow(0 0 0 transparent); }
+  50% { filter: drop-shadow(0 0 2.5px currentColor); }
+}
+@keyframes ic-l-sweep {
+  0% { transform: translateX(0); }
+  35%, 100% { transform: translateX(34px); }
+}
+@keyframes ic-l-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+@keyframes ic-l-breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.22); opacity: 0.7; }
+}
+@keyframes ic-l-twinkle {
+  0%, 55%, 100% { transform: scale(0.45); opacity: 0.35; }
+  75% { transform: scale(1.15) rotate(45deg); opacity: 1; }
+}
+@keyframes ic-l-seq {
+  0%, 30%, 100% { opacity: 0.3; }
+  12% { opacity: 1; }
+}
+@keyframes ic-l-flicker {
+  0%, 78%, 86%, 94%, 100% { opacity: 1; }
+  82% { opacity: 0.3; }
+  90% { opacity: 0.55; }
+}
+@keyframes ic-l-ripple {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+@keyframes ic-l-alt {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+@keyframes ic-l-ember {
+  0% { transform: translateY(0); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(-5px); opacity: 0; }
+}
+@keyframes ic-l-cascade {
+  0%, 60%, 100% { opacity: 0.4; }
+  25% { opacity: 1; }
+}
+@keyframes ic-l-blink {
+  0%, 88%, 100% { transform: scaleY(1); }
+  93% { transform: scaleY(0.1); }
+}
+@keyframes ic-l-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1px); }
+}
+@keyframes ic-l-wave {
+  0%, 60%, 100% { opacity: 0.2; }
+  25% { opacity: 0.85; }
+}
+@keyframes ic-l-glow {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.45; }
+}
+@keyframes ic-l-spin {
   to { transform: rotate(360deg); }
 }
-@keyframes ic-swing {
-  25% { transform: rotate(-14deg); }
-  75% { transform: rotate(14deg); }
+@keyframes ic-l-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(1.25px); }
 }
-@keyframes ic-drop {
-  50% { transform: translateY(2.5px); }
+@keyframes ic-l-sort {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(0.6); }
 }
-@keyframes ic-rise {
-  50% { transform: translateY(-2.5px); }
-}
-@keyframes ic-blink {
-  0%, 40%, 50%, 100% { transform: scaleY(1); }
-  45% { transform: scaleY(0.1); }
-}
-@keyframes ic-twinkle {
-  50% { opacity: 0.15; transform: scale(0.6); }
-}
-@keyframes ic-in-l {
-  50% { transform: translateX(1.25px); }
-}
-@keyframes ic-in-r {
-  50% { transform: translateX(-1.25px); }
-}
-@keyframes ic-slide {
-  50% { transform: translateX(2px); }
-}
-@keyframes ic-needle {
-  30% { transform: rotate(-30deg); }
-  65% { transform: rotate(18deg); }
-}
-/* 配合 pathLength=1、stroke-dasharray="1 1":先从头擦掉,再从头画出 */
-@keyframes ic-draw {
-  from { stroke-dashoffset: 0; }
-  to { stroke-dashoffset: -2; }
-}
-/* 一道高光从左扫到右,之后停在图形外 */
-@keyframes ic-sweep {
-  0% { transform: translateX(0); }
-  40%, 100% { transform: translateX(34px); }
+@keyframes ic-l-sway {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-12deg); }
+  75% { transform: rotate(10deg); }
 }
