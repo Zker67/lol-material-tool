@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { LayoutGroup, motion } from "motion/react";
 import { toast } from "sonner";
-import { Copy, Download, FolderDown, History, ImageDown, Maximize2, MousePointerClick, Sparkles, X } from "lucide-react";
-import type { Catalog, Champion, ExportItem, Item, Skin, SkinArt } from "@/mygo";
+import { Copy, Download, FolderDown, History, ImageDown, Loader2, Maximize2, MousePointerClick, Sparkles, X } from "lucide-react";
+import type { Catalog, Champion, ExportItem, Item, Skin, SkinArt, TFTStat } from "@/mygo";
 import { Desktop, Tasks } from "@/mygo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,15 +11,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { errorMessage, pickDirectory } from "@/lib/api";
-import { useChampionArt, useHistoryPatch } from "@/lib/assets";
+import { useChampionArt, useHistoryPatch, useTFTDetail } from "@/lib/assets";
 import { copyImage, copyText, ensureSaveDir, saveAsset } from "@/lib/save";
 import { cn } from "@/lib/utils";
+import { ACTIVE_PILL, ENTER } from "@/lib/motion";
 import { useUI, type DetailTab } from "@/store/ui";
 import { AssetImage } from "./AssetImage";
 import { plainText, RichText } from "./RichText";
 import { Lightbox, type Preview } from "./Lightbox";
 import { RuneTree } from "./RuneTree";
-import { championExportItems, championFullName, itemTagLabel, ROLE_LABELS, skinKey, tftKey, type RuneTreeRow } from "./sections";
+import { championExportItems, championFullName, itemTagLabel, ROLE_LABELS, skinKey, TFT_FACE_CROP, tftKey, type RuneTreeRow } from "./sections";
 
 /** 图上的小操作按钮:半透明玻璃底 */
 function GlassButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
@@ -177,24 +179,29 @@ function ArtStage({ path, alt, onOpen, children }: { path: string; alt: string; 
 
 /** 分段选择器:同一组里选一项 */
 function Segmented<T extends string>({ value, options, onChange }: { value: T; options: { key: T; label: string }[]; onChange: (v: T) => void }) {
+  const groupId = useId();
   return (
-    <div role="radiogroup" className="flex flex-1 rounded-md bg-black/30 p-0.5">
-      {options.map((o) => (
-        <button
-          key={o.key}
-          type="button"
-          role="radio"
-          aria-checked={o.key === value}
-          onClick={() => onChange(o.key)}
-          className={cn(
-            "flex-1 rounded-[5px] py-1 text-xs transition-colors",
-            o.key === value ? "bg-hex-gold/15 text-hex-gold-light shadow-sm" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
+    <LayoutGroup id={groupId}>
+      <div role="radiogroup" className="flex flex-1 rounded-md bg-black/30 p-0.5">
+        {options.map((o) => (
+          <button
+            key={o.key}
+            type="button"
+            role="radio"
+            aria-checked={o.key === value}
+            onClick={() => onChange(o.key)}
+            className={cn(
+              "relative isolate flex-1 rounded-[5px] py-1 text-xs transition-colors",
+              o.key === value ? "text-hex-gold-light" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {/* 选中块在各项之间滑动 */}
+            {o.key === value && <motion.span layoutId="segmented-active" className={ACTIVE_PILL} />}
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </LayoutGroup>
   );
 }
 
@@ -633,7 +640,8 @@ function SimpleDetail({
             </Button>
           </div>
         </div>
-        <AssetImage path={icon} alt={fileName} fit="contain" className="size-16 shrink-0 rounded-lg bg-hex-bg-2/60 ring-1 ring-hex-gold-dark/60" />
+        {/* 高度固定,宽度按原图比例(弈子是 2:1 横图) */}
+        <AssetImage path={icon} alt={fileName} fit="contain" autoWidth className="h-16 shrink-0 rounded-lg bg-hex-bg-2/60 ring-1 ring-hex-gold-dark/60" />
       </div>
       {children}
     </div>
@@ -833,6 +841,257 @@ function RuneDetail({ catalog, id }: { catalog: Catalog; id: string }) {
   );
 }
 
+type TFTEntry = Catalog["tft"][number];
+
+/** 弈子费用对应的描边色 */
+const COST_RING: Record<number, string> = {
+  1: "ring-zinc-400/70",
+  2: "ring-emerald-500/80",
+  3: "ring-sky-500/80",
+  4: "ring-fuchsia-500/80",
+  5: "ring-amber-400/90",
+};
+
+/** 羁绊档位颜色:1 青铜、3 白银、4 彩色、5 黄金、6 棱彩 */
+const BREAKPOINT_STYLE: Record<number, string> = {
+  1: "border-[#a0715e]/60 text-[#d29a7d]",
+  3: "border-[#9fb0bf]/60 text-[#c9d6e0]",
+  4: "border-[#ff7ad9]/50 text-[#ff9be3]",
+  5: "border-hex-gold/60 text-hex-gold",
+  6: "border-[#ff7ad9]/50 text-[#ff9be3]",
+};
+
+/** 属性表:名称在左,数值在右 */
+function StatGrid({ stats }: { stats: TFTStat[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+      {stats.map((s) => (
+        <div key={s.label} className="flex items-baseline justify-between gap-2 border-b border-border/50 pb-0.5">
+          <span className="text-muted-foreground">{s.label}</span>
+          <span className="font-mono text-hex-gold-light">{s.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** 弈子属性表:每行一项属性,三列依次为 1 / 2 / 3 星;随星级变化的数值高亮 */
+function StarStatTable({ stats }: { stats: TFTStat[] }) {
+  return (
+    <div className="space-y-1.5">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-[11px] text-muted-foreground">
+            <th className="pb-1 text-left font-normal">属性</th>
+            {["1 星", "2 星", "3 星"].map((h) => (
+              <th key={h} className="pb-1 text-right font-normal">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {stats.map((s) => {
+            const scaled = new Set(s.stars).size > 1;
+            return (
+              <tr key={s.label} className="border-t border-border/50">
+                <td className="py-0.5 text-muted-foreground">{s.label}</td>
+                {s.stars.map((v, i) => (
+                  <td key={i} className={cn("py-0.5 text-right font-mono", scaled ? "text-hex-gold-light" : "text-muted-foreground")}>
+                    {v}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <div className="text-[10px] text-muted-foreground/70">2、3 星按升星倍率推算:生命值 ×1.8 / ×3.24,攻击力 ×1.5 / ×2.25</div>
+    </div>
+  );
+}
+
+/** 关联的云顶条目(羁绊):小图标 + 名称,点击查看 */
+function TFTChips({ entries }: { entries: TFTEntry[] }) {
+  const select = useUI((s) => s.select);
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {entries.map((e) => (
+        <button
+          key={tftKey(e)}
+          type="button"
+          onClick={() => select({ kind: "tft", id: tftKey(e), category: e.category })}
+          className="flex items-center gap-1.5 rounded-md border border-hex-gold-dark/60 bg-hex-bg-2/40 py-0.5 pr-2 pl-0.5 text-xs text-hex-gold-light hover:border-hex-gold"
+        >
+          <AssetImage path={e.icon} alt={e.name} fit="contain" className="size-5 bg-transparent" />
+          {e.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** 关联的云顶条目(弈子、装备):一排图标,点击查看;弈子按费用描边 */
+function TFTIcons({ entries, separator }: { entries: TFTEntry[]; separator?: string }) {
+  const select = useUI((s) => s.select);
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {entries.map((e, i) => (
+        <Fragment key={`${tftKey(e)}-${i}`}>
+          {separator && i > 0 && <span className="text-sm text-hex-gold-dark">{separator}</span>}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => select({ kind: "tft", id: tftKey(e), category: e.category })}
+                className={cn("overflow-hidden rounded-sm ring-1 hover:ring-hex-gold", COST_RING[e.cost] ?? "ring-hex-gold-dark")}
+              >
+                <AssetImage path={e.icon} alt={e.name} className={cn("size-10", e.category === "弈子" && TFT_FACE_CROP)} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {e.name}
+              {e.cost ? ` · ${e.cost} 费` : ""}
+            </TooltipContent>
+          </Tooltip>
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
+/** 云顶条目详情:名称与图标来自 Data Dragon,说明、数值、合成、技能、羁绊档位等来自 CommunityDragon */
+function TFTDetailView({ catalog, entry }: { catalog: Catalog; entry: TFTEntry }) {
+  const detail = useTFTDetail(catalog.version, entry.category, entry.id);
+  const d = detail.data;
+  const [splashOpen, setSplashOpen] = useState(false);
+  const byKey = useMemo(() => new Map(catalog.tft.map((e) => [tftKey(e), e])), [catalog.tft]);
+  /** ID → 本版本目录里的条目;unique 时同名的变体只留一个 */
+  const pick = (category: string, ids: string[] | null | undefined, unique = true) => {
+    const seen = new Set<string>();
+    return (ids ?? [])
+      .map((id) => byKey.get(`${category}:${id}`))
+      .filter((x): x is TFTEntry => !!x && (!unique || (!seen.has(x.name) && !!seen.add(x.name))));
+  };
+
+  // Data Dragon 自带说明的(海克斯强化、地区传送门)用官方的
+  const description = entry.description || d?.description || "";
+  const traits = pick("羁绊", d?.traits);
+  const champions = pick("弈子", d?.champions);
+  const composition = pick("装备", d?.composition, false);
+  const into = pick("装备", d?.into);
+  const stats = d?.stats ?? [];
+  // 弈子的属性带 1–3 星数值
+  const starStats = stats.length > 0 && stats.every((s) => (s.stars ?? []).length === 3);
+  const ability = d?.ability;
+  const splashName = `${entry.name} 原画.png`;
+
+  const copy = [
+    plainText(description),
+    stats.map((s) => `${s.label} ${starStats ? s.stars.join(" / ") : s.value}`).join("\n"),
+    ability ? `${ability.name}\n${plainText(ability.description)}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  const empty = !description && !ability && stats.length === 0 && composition.length === 0 && champions.length === 0;
+
+  return (
+    <SimpleDetail
+      title={entry.name}
+      subtitle={[entry.category, entry.set && `S${entry.set}`].filter(Boolean).join(" · ")}
+      icon={entry.icon}
+      fileName={`${entry.name}.png`}
+      badges={[
+        entry.cost ? `${entry.cost} 费` : "",
+        entry.category === "小小英雄" && entry.tier ? `等级 ${entry.tier}` : "",
+        ...(d?.tags ?? []),
+        d?.rarity ?? "",
+        d?.species ?? "",
+        d?.series ?? "",
+      ]}
+      copy={copy}
+    >
+      {d?.splash && (
+        <div className="overflow-hidden rounded-lg border border-hex-gold-dark/40">
+          <ArtStage path={d.splash} alt={splashName} onOpen={() => setSplashOpen(true)} />
+          <Lightbox items={[{ path: d.splash, title: entry.name, fileName: splashName }]} index={0} onIndexChange={() => {}} open={splashOpen} onOpenChange={setSplashOpen} />
+        </div>
+      )}
+
+      {(d?.breakpoints ?? []).length > 0 && (
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="mr-1 text-[11px] text-muted-foreground">激活人数</span>
+          {d!.breakpoints.map((b) => (
+            <span
+              key={b.minUnits}
+              className={cn("rounded-sm border px-1.5 font-mono text-[11px]", BREAKPOINT_STYLE[b.style] ?? "border-border text-hex-gold-light")}
+            >
+              {b.minUnits}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <RichText text={description} className="text-[13px]" />
+
+      {detail.isLoading && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="size-3.5 animate-spin" />
+          正在读取 CommunityDragon 资料…
+        </div>
+      )}
+      {detail.isError && !description && <div className="text-xs text-muted-foreground">{errorMessage(detail.error)}</div>}
+      {detail.isSuccess && empty && <div className="text-xs text-muted-foreground">官方数据里没有这一项的说明</div>}
+
+      {traits.length > 0 && (
+        <Section title={entry.category === "弈子" ? "羁绊" : "关联羁绊"}>
+          <TFTChips entries={traits} />
+        </Section>
+      )}
+
+      {ability && (
+        <Section title="技能" extra={<CopyButton text={`${ability.name}\n${plainText(ability.description)}`} />}>
+          <div className="flex items-start gap-2.5">
+            {ability.icon && (
+              <button type="button" title="保存" onClick={() => saveAsset(ability.icon, `${entry.name} 技能 ${ability.name}.png`)} className="group/icon relative shrink-0">
+                <AssetImage path={ability.icon} alt={ability.name} className="size-10 shrink-0 rounded-sm border border-hex-gold-dark" />
+                <span className="absolute inset-0 flex items-center justify-center rounded-sm bg-black/55 opacity-0 transition-opacity group-hover/icon:opacity-100">
+                  <Download className="size-4 text-hex-gold-light" />
+                </span>
+              </button>
+            )}
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="text-sm text-hex-gold-light">{ability.name}</div>
+              <RichText text={ability.description} className="text-[11px]" />
+              {ability.description.includes("/") && <div className="text-[10px] text-muted-foreground/70">数值依次为 1 / 2 / 3 星</div>}
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {stats.length > 0 && (
+        <Section title={starStats ? "基础属性" : "属性"}>{starStats ? <StarStatTable stats={stats} /> : <StatGrid stats={stats} />}</Section>
+      )}
+
+      {composition.length > 0 && (
+        <Section title="合成">
+          <TFTIcons entries={composition} separator="+" />
+        </Section>
+      )}
+      {into.length > 0 && (
+        <Section title={`可合成 · ${into.length}`}>
+          <TFTIcons entries={into} />
+        </Section>
+      )}
+      {champions.length > 0 && (
+        <Section title={`弈子 · ${champions.length}`}>
+          <TFTIcons entries={champions} />
+        </Section>
+      )}
+    </SimpleDetail>
+  );
+}
+
 /** 右侧详情面板 */
 export function DetailPanel({ catalog }: { catalog: Catalog | undefined }) {
   const selection = useUI((s) => s.selection);
@@ -886,19 +1145,7 @@ export function DetailPanel({ catalog }: { catalog: Catalog | undefined }) {
       }
       case "tft": {
         const e = catalog.tft.find((x) => tftKey(x) === selection.id);
-        if (e)
-          body = (
-            <SimpleDetail
-              title={e.name}
-              subtitle={[e.category, e.set && `S${e.set}`].filter(Boolean).join(" · ")}
-              icon={e.icon}
-              fileName={`${e.name}.png`}
-              badges={[e.cost ? `${e.cost} 费` : "", e.category === "小小英雄" && e.tier ? `等级 ${e.tier}` : ""]}
-              copy={plainText(e.description)}
-            >
-              <RichText text={e.description} className="text-[13px]" />
-            </SimpleDetail>
-          );
+        if (e) body = <TFTDetailView key={tftKey(e)} catalog={catalog} entry={e} />;
         break;
       }
     }
@@ -924,7 +1171,10 @@ export function DetailPanel({ catalog }: { catalog: Catalog | undefined }) {
         </Tooltip>
       </div>
       <ScrollArea className="min-h-0 flex-1">
-        <div className="p-4 select-text">{body}</div>
+        {/* 换一项时内容淡入;同一英雄换皮肤不算换项 */}
+        <motion.div key={selection ? `${selection.kind}:${selection.id}` : "empty"} {...ENTER} className="p-4 select-text">
+          {body}
+        </motion.div>
       </ScrollArea>
     </div>
   );

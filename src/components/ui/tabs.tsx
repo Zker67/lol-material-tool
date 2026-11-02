@@ -2,12 +2,24 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 import { Tabs as TabsPrimitive } from "radix-ui"
+import { LayoutGroup, motion } from "motion/react"
+import { ACTIVE_PILL } from "@/lib/motion"
+
+/** 当前选中的页签:选中块(或下划线)在页签之间滑动 */
+const TabsValueContext = React.createContext<string | undefined>(undefined)
 
 function Tabs({
   className,
   orientation = "horizontal",
+  value,
+  defaultValue,
+  onValueChange,
+  children,
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.Root>) {
+  // 非受控时自己记住当前页签,滑块才知道停在哪
+  const [inner, setInner] = React.useState(defaultValue)
+  const groupId = React.useId()
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
@@ -16,8 +28,18 @@ function Tabs({
         "group/tabs flex gap-2 data-horizontal:flex-col",
         className
       )}
+      value={value}
+      defaultValue={defaultValue}
+      onValueChange={(v) => {
+        setInner(v)
+        onValueChange?.(v)
+      }}
       {...props}
-    />
+    >
+      <TabsValueContext.Provider value={value ?? inner}>
+        <LayoutGroup id={groupId}>{children}</LayoutGroup>
+      </TabsValueContext.Provider>
+    </TabsPrimitive.Root>
   )
 }
 
@@ -54,8 +76,10 @@ function TabsList({
 
 function TabsTrigger({
   className,
+  children,
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
+  const active = React.useContext(TabsValueContext) === props.value
   return (
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
@@ -64,10 +88,23 @@ function TabsTrigger({
         "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
         "data-active:bg-background data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 dark:data-active:text-foreground",
         "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
+        // 选中态由滑块表示:默认样式滑动的是底色块,line 样式滑动的是金色下划线
+        "isolate data-active:bg-transparent data-active:text-hex-gold-light dark:data-active:border-transparent dark:data-active:bg-transparent dark:data-active:text-hex-gold-light group-data-[variant=line]/tabs-list:data-active:after:opacity-0",
         className
       )}
       {...props}
-    />
+    >
+      {active && (
+        <motion.span
+          layoutId="tabs-active"
+          className={cn(
+            ACTIVE_PILL,
+            "group-data-[variant=line]/tabs-list:inset-x-0 group-data-[variant=line]/tabs-list:top-auto group-data-[variant=line]/tabs-list:bottom-[-5px] group-data-[variant=line]/tabs-list:h-0.5 group-data-[variant=line]/tabs-list:rounded-none group-data-[variant=line]/tabs-list:bg-hex-gold group-data-[variant=line]/tabs-list:ring-0"
+          )}
+        />
+      )}
+      {children}
+    </TabsPrimitive.Trigger>
   )
 }
 

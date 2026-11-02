@@ -6,6 +6,10 @@ import { Favicon } from "../Favicon";
 import type { TaskProgress } from "../../lib/api";
 import type { PackInfo } from "../../mygo";
 import { formatBytes, formatSpeed, formatEta } from "../../lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Field, LogPanel, PanelTitle } from "./PanelParts";
 
 interface Props {
   versions: string[];
@@ -84,104 +88,84 @@ export function DownloadPanel({
   const stageLabel = progress?.stage === "extract" ? "解压中" : "下载中";
 
   return (
-    <div className="flex gap-6 h-full">
+    <div className="flex h-full gap-6">
       {/* 左:操作区 */}
-      <div className="flex-3 min-w-0 space-y-5 overflow-auto pr-1">
-        <h2 className="text-xl font-display font-bold text-hex-gold border-b border-hex-gold-dark/50 pb-2">
-          素材获取
-        </h2>
+      <div className="min-w-0 flex-3 space-y-6 overflow-auto pr-1">
+        <PanelTitle>整包下载</PanelTitle>
 
         {/* 赛季 ↔ 版本号 两级联动 */}
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm text-hex-gold-light">赛季</span>
-          <select
-            value={major}
-            disabled={busy || majors.length === 0}
-            onChange={(e) => onMajorChange(e.target.value)}
-            className="bg-hex-panel border border-hex-gold-dark/50 px-3 py-2 text-sm text-hex-text focus:border-hex-gold outline-hidden disabled:opacity-50"
-          >
-            {majors.length === 0 && <option>—</option>}
-            {majors.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-          <span className="text-sm text-hex-gold-light">版本号</span>
-          <select
-            value={version}
-            disabled={busy || filtered.length === 0}
-            onChange={(e) => onVersionChange(e.target.value)}
-            className="bg-hex-panel border border-hex-gold-dark/50 px-3 py-2 text-sm text-hex-text focus:border-hex-gold outline-hidden disabled:opacity-50 min-w-32"
-          >
-            {filtered.length === 0 && <option>加载中…</option>}
-            {filtered.map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={onRefresh}
-            disabled={busy}
-            className="flex items-center gap-1 px-3 py-2 text-sm bg-hex-blue-dark/40 border border-hex-blue/40 text-hex-blue hover:bg-hex-blue-dark/70 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={14} /> 刷新版本列表
-          </button>
-        </div>
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-end gap-3">
+            <Field label="赛季">
+              <Select value={major} disabled={busy || majors.length === 0} onValueChange={onMajorChange}>
+                <SelectTrigger className="w-24 font-display text-base">
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent>
+                  {majors.map((m) => (
+                    <SelectItem key={m} value={m} className="font-display">
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="版本号">
+              <Select value={version} disabled={busy || filtered.length === 0} onValueChange={onVersionChange}>
+                <SelectTrigger className="w-36 font-display text-base">
+                  <SelectValue placeholder="加载中…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filtered.map((v) => (
+                    <SelectItem key={v} value={v} className="font-display">
+                      {v}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Button variant="outline" onClick={onRefresh} disabled={busy}>
+              <RefreshCw /> 刷新版本列表
+            </Button>
+          </div>
 
-        {/* 全量包大小 / 是否提供 */}
-        <div className="text-xs -mt-2">
-          {packInfo === undefined && <span className="text-hex-text-muted">正在检查数据包…</span>}
-          {packInfo?.available && <span className="text-hex-text-muted">全量包约 {formatBytes(packInfo.size)}</span>}
-          {packInfo && !packInfo.available && <span className="text-red-400">官方未提供该版本的全量包,可换一个版本,或在「素材浏览」中在线查看</span>}
+          {/* 全量包大小 / 是否提供 */}
+          <div className="text-xs">
+            {packInfo === undefined && <span className="text-hex-text-muted">正在检查数据包…</span>}
+            {packInfo?.available && (
+              <span className="text-hex-text-muted">
+                全量包约 <span className="font-display text-sm font-semibold text-hex-gold-light">{formatBytes(packInfo.size)}</span>
+              </span>
+            )}
+            {packInfo && !packInfo.available && <span className="text-destructive">官方未提供该版本的全量包,可换一个版本,或在「素材浏览」中在线查看</span>}
+          </div>
         </div>
 
         {/* 保存目录 */}
-        <div className="space-y-2">
-          <label className="text-sm text-hex-gold-light">目标目录</label>
+        <Field label="保存到">
           <div className="flex gap-2">
-            <input
-              readOnly
-              value={destDir}
-              placeholder="点击右侧按钮选择…"
-              className="flex-1 bg-hex-panel border border-hex-gold-dark/50 px-3 py-2 text-sm text-hex-text-muted outline-hidden"
-            />
-            <button
-              onClick={onPickDir}
-              disabled={busy}
-              className="flex items-center gap-1 px-3 py-2 text-sm bg-hex-blue-dark/40 border border-hex-blue/40 text-hex-blue hover:bg-hex-blue-dark/70 transition-colors disabled:opacity-50"
-            >
-              <FolderOpen size={16} /> 选择
-            </button>
+            <Input readOnly value={destDir} placeholder="选择一个文件夹" className="flex-1 text-hex-text-muted select-text" />
+            <Button variant="outline" onClick={onPickDir} disabled={busy}>
+              <FolderOpen /> 选择
+            </Button>
           </div>
-        </div>
+        </Field>
 
         {/* 操作按钮 */}
         <div className="flex gap-3">
           {!busy ? (
-            <button
-              onClick={onStart}
-              disabled={!!packInfo && !packInfo.available}
-              className="disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 px-5 py-2.5 bg-hex-gold-dark/60 border border-hex-gold text-hex-gold-light font-semibold hover:bg-hex-gold-dark transition-colors"
-            >
-              <Download size={18} /> 获取数据包
-            </button>
+            <Button size="lg" className="h-10 px-6 text-base" onClick={onStart} disabled={!!packInfo && !packInfo.available}>
+              <Download className="size-4.5" /> 获取数据包
+            </Button>
           ) : (
-            <button
-              onClick={onCancel}
-              className="flex items-center gap-2 px-5 py-2.5 bg-red-900/50 border border-red-500/60 text-red-200 font-semibold hover:bg-red-900/80 transition-colors"
-            >
-              <X size={18} /> 取消
-            </button>
+            <Button size="lg" variant="destructive" className="h-10 px-6 text-base" onClick={onCancel}>
+              <X className="size-4.5" /> 取消
+            </Button>
           )}
           {resultDir && !busy && (
-            <button
-              onClick={onOpenResult}
-              className="flex items-center gap-2 px-4 py-2.5 bg-hex-panel border border-hex-gold-dark/50 text-hex-gold hover:border-hex-gold transition-colors"
-            >
-              <FolderOpen size={16} /> 打开数据包
-            </button>
+            <Button size="lg" variant="outline" className="h-10" onClick={onOpenResult}>
+              <FolderOpen /> 打开数据包
+            </Button>
           )}
         </div>
 
@@ -189,7 +173,7 @@ export function DownloadPanel({
         {showProgress && progress && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm text-hex-gold-light">
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
               <span>{stageLabel}</span>
             </div>
             <HextechProgressBar ratio={ratio} indeterminate={indeterminate} />
@@ -210,19 +194,19 @@ export function DownloadPanel({
 
         {/* 相关链接(与导航页一致的图标卡片) */}
         <div className="space-y-2 pt-2">
-          <div className="text-sm font-semibold text-hex-gold">相关链接</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="font-heading text-sm font-semibold text-hex-gold">相关链接</div>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             {RELATED_LINKS.map((l) => (
               <button
                 key={l.url}
                 onClick={() => openUrl(l.url)}
-                className="group flex items-center gap-3 p-3 rounded-sm bg-hex-bg-2/30 border border-hex-gold-dark/15 hover:border-hex-gold/60 hover:bg-hex-gold-dark/10 transition-all duration-300 cursor-pointer hover:-translate-y-0.5 shadow-xs text-left"
+                className="group flex cursor-pointer items-center gap-3 border border-hex-gold-dark/30 bg-hex-bg-2/40 p-3 text-left transition-colors hover:border-hex-gold/60 hover:bg-hex-gold-dark/10"
               >
                 <Favicon url={l.url} name={l.name} />
-                <span className="flex-1 min-w-0 text-sm font-medium text-hex-gold-light group-hover:text-hex-gold transition-colors wrap-break-word">
+                <span className="min-w-0 flex-1 text-sm font-medium wrap-break-word text-hex-gold-light transition-colors group-hover:text-hex-gold">
                   {l.name}
                 </span>
-                <ExternalLink className="w-3.5 h-3.5 text-hex-text-muted opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+                <ExternalLink className="ml-1 h-3.5 w-3.5 text-hex-text-muted opacity-0 transition-opacity group-hover:opacity-100" />
               </button>
             ))}
           </div>
@@ -230,16 +214,7 @@ export function DownloadPanel({
       </div>
 
       {/* 右:实时日志 */}
-      <div className="flex-2 min-w-0 flex flex-col">
-        <div className="text-sm font-semibold text-hex-gold mb-2">实时日志</div>
-        <div className="flex-1 overflow-auto bg-hex-bg-2 border border-hex-gold-dark/30 p-3 text-xs font-mono text-hex-text-muted space-y-0.5">
-          {logs.length === 0 ? (
-            <div className="opacity-50">暂无日志</div>
-          ) : (
-            logs.map((l, i) => <div key={i}>{l}</div>)
-          )}
-        </div>
-      </div>
+      <LogPanel logs={logs} />
     </div>
   );
 }

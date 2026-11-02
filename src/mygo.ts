@@ -218,6 +218,48 @@ export interface Spell {
 /** Stage 是任务所处的阶段。 */
 export type Stage = "download" | "extract" | "localize" | "export";
 
+/** TFTAbility 是弈子的技能。 */
+export interface TFTAbility {
+  name: string;
+  icon: string;
+  /** Description 已代入数值,星级不同的数值用 / 分隔。 */
+  description: string;
+}
+
+/** TFTBreakpoint 是羁绊的一档。 */
+export interface TFTBreakpoint {
+  minUnits: number;
+  /** Style 是档位颜色:1 青铜、3 白银、4 彩色、5 黄金、6 棱彩。 */
+  style: number;
+}
+
+/** TFTDetail 是一项云顶素材的详细资料,各分类只填用得到的字段;ID 均与 TFTEntry.ID 对应。 */
+export interface TFTDetail {
+  /** Patch 是资料所属的 CommunityDragon 补丁。 */
+  patch: string;
+  /** Description 是已代入数值的说明(Riot 富文本);小小英雄、棋盘皮肤为背景描述。 */
+  description: string;
+  /** Stats 是装备提供的属性,或弈子 1–3 星的基础属性。 */
+  stats: TFTStat[];
+  /** Tags 是中文标签,如 基础装备、唯一。 */
+  tags: string[];
+  /** Composition 是合成材料,Into 是可合成的装备。 */
+  composition: string[];
+  into: string[];
+  /** Traits 是弈子的羁绊,或纹章、海克斯强化关联的羁绊。 */
+  traits: string[];
+  /** Ability、Splash 只有弈子有。 */
+  ability: TFTAbility | null;
+  splash: string;
+  /** Breakpoints 与 Champions 只有羁绊有(Champions 按费用排序)。 */
+  breakpoints: TFTBreakpoint[];
+  champions: string[];
+  /** Rarity 是稀有度;Species 是小小英雄种类,Series 是棋盘皮肤系列。 */
+  rarity: string;
+  species: string;
+  series: string;
+}
+
 /** TFTEntry 是一项云顶素材。 */
 export interface TFTEntry {
   id: string;
@@ -232,6 +274,30 @@ export interface TFTEntry {
   /** Cost 是弈子费用;Tier 是小小英雄等原始 tier 字段。 */
   cost: number;
   tier: string;
+}
+
+/** TFTSeason 是一个赛季,以及该赛季实际用到的条目(CommunityDragon setData 中的主模式 TFTSet{n})。 */
+export interface TFTSeason {
+  /** Number 是赛季编号,与 TFTEntry.Set 一致,如 17。 */
+  number: string;
+  /** Name 是中文赛季名,如 星神;客户端数据里没有时为空。 */
+  name: string;
+  /** Default 表示这是该版本游戏的默认赛季。 */
+  default: boolean;
+  /**
+   * Members 是本赛季的条目 ID,键为分类(弈子、羁绊、装备、海克斯强化);
+   * 早期补丁(如 13.1)没有装备与海克斯强化名单,对应的键缺失。
+   */
+  members: Record<string, string[]>;
+}
+
+/** TFTStat 是一项属性,如 生命值 650。 */
+export interface TFTStat {
+  label: string;
+  /** Value 是装备的属性加成,或弈子 1 星的数值。 */
+  value: string;
+  /** Stars 只有弈子有:1、2、3 星的数值。 */
+  stars: string[];
 }
 
 // ---- Services ----
@@ -316,6 +382,14 @@ export const Assets = {
   /** SetSaveDir 设置固定保存位置;传 "" 表示清除,之后每次保存都会先询问。 */
   setSaveDir(dir: string): Promise<void> {
     return call("Assets.SetSaveDir", dir);
+  },
+  /** TFTDetail 返回某个版本下一项云顶素材(分类 + ID)的说明、数值、合成、技能等资料(CommunityDragon),没有时返回 null。 */
+  tftDetail(version: string, category: string, id: string): Promise<TFTDetail | null> {
+    return call("Assets.TFTDetail", version, category, id);
+  },
+  /** TFTSeasons 返回某个版本下的云顶赛季(从新到旧):中文名、是否为默认赛季,以及各分类在该赛季用到的条目(CommunityDragon)。 */
+  tftSeasons(version: string): Promise<TFTSeason[]> {
+    return call("Assets.TFTSeasons", version);
   },
 } as const;
 

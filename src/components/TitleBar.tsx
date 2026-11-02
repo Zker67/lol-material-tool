@@ -2,6 +2,20 @@ import { useState, useEffect } from "react";
 import { currentWindow, isMyGo } from "mygo-runtime";
 import { X, Minus, Square, Copy } from "lucide-react";
 
+/** 标题栏小图标:应用图标的简化版(金色 L + 青色圆环 + 下载箭头) */
+function AppLogo() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4 shrink-0 pointer-events-none" aria-hidden="true">
+      <circle cx="13.5" cy="11" r="8" className="fill-hex-blue-dark stroke-hex-gold" strokeWidth="1.5" />
+      <circle cx="13.5" cy="11" r="6" className="fill-none stroke-hex-blue" strokeWidth="0.75" opacity="0.8" />
+      <g className="fill-hex-gold stroke-hex-bg" strokeWidth="1" strokeLinejoin="miter" paintOrder="stroke">
+        <path d="M2 2.5h6.5v14h14l-2.5 5H3.5l1.5-2V4.5z" />
+        <path d="M12.5 4.5h2.5v5h2.5L13.75 14 10 9.5h2.5z" />
+      </g>
+    </svg>
+  );
+}
+
 export function TitleBar() {
   // 在普通浏览器里预览页面时没有 MyGo 运行时,窗口控制不做事
   const appWindow = isMyGo()
@@ -44,10 +58,8 @@ export function TitleBar() {
 
       {/* 标题区(可拖拽) */}
       <div className="flex items-center gap-2 relative z-10 w-full h-full [--app-region:drag]">
-        <div className="w-2 h-2 bg-hex-gold rounded-full pointer-events-none" />
-        <span className="text-xs font-display font-semibold text-hex-gold tracking-[0.2em] pointer-events-none">
-          LOL MATERIAL TOOL
-        </span>
+        <AppLogo />
+        <span className="text-xs font-semibold text-hex-gold tracking-widest pointer-events-none">英雄联盟素材工具</span>
       </div>
 
       {/* 窗口控制 */}

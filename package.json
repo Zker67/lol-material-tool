@@ -12,12 +12,14 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@fontsource/rajdhani": "^5.3.0",
     "@tanstack/react-query": "^5.104.5",
     "@tanstack/react-virtual": "^3.14.22",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "cn": "^0.5.0",
     "lucide-react": "^1.61.0",
+    "motion": "^14.9.0",
     "mygo-runtime": "0.7.4",
     "radix-ui": "^1.8.1",
     "react": "^19.3.1",

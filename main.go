@@ -109,6 +109,7 @@ func (t *Tasks) CancelTask() {
 type Assets struct {
 	store    *material.Store
 	catalogs *material.Catalogs
+	tft      *material.TFTLibrary
 	// settingsFile 保存固定保存位置等用户设置
 	settingsFile string
 
@@ -154,6 +155,30 @@ func (a *Assets) ChampionArt(ctx context.Context, version string, key string) (*
 		return nil, errors.New("CommunityDragon 没有该版本的数据(7.1 起提供)")
 	}
 	return material.ChampionArtFor(ctx, a.store, patch, key)
+}
+
+// TFTDetail 返回某个版本下一项云顶素材(分类 + ID)的说明、数值、合成、技能等资料(CommunityDragon),没有时返回 null。
+func (a *Assets) TFTDetail(ctx context.Context, version string, category string, id string) (*material.TFTDetail, error) {
+	patch, err := a.HistoryPatch(ctx, version)
+	if err != nil {
+		return nil, err
+	}
+	if patch == "" {
+		return nil, errors.New("CommunityDragon 没有该版本的数据")
+	}
+	return a.tft.Detail(ctx, patch, category, id)
+}
+
+// TFTSeasons 返回某个版本下的云顶赛季(从新到旧):中文名、是否为默认赛季,以及各分类在该赛季用到的条目(CommunityDragon)。
+func (a *Assets) TFTSeasons(ctx context.Context, version string) ([]material.TFTSeason, error) {
+	patch, err := a.HistoryPatch(ctx, version)
+	if err != nil {
+		return nil, err
+	}
+	if patch == "" {
+		return nil, errors.New("CommunityDragon 没有该版本的数据")
+	}
+	return a.tft.Seasons(ctx, patch)
 }
 
 // SaveAs 让用户选择位置,把一项素材另存过去;取消时返回 ""。
@@ -303,7 +328,7 @@ func cacheDir() string {
 
 func main() {
 	store := material.NewStore(cacheDir())
-	mygo.Bind(&Tasks{store: store}, &Assets{store: store, catalogs: material.NewCatalogs(store), settingsFile: settingsFile()}, Desktop{})
+	mygo.Bind(&Tasks{store: store}, &Assets{store: store, catalogs: material.NewCatalogs(store), tft: material.NewTFTLibrary(store), settingsFile: settingsFile()}, Desktop{})
 	// 页面经 lmt://localhost/ddragon/...(Windows 上为 http://lmt.localhost/...)加载素材
 	if err := mygo.Protocol.Handle("lmt", store); err != nil {
 		log.Fatal(err)

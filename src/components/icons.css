@@ -1,0 +1,95 @@
+/*
+ * 自绘图标的动画:所在按钮悬停时播放一次,选中时循环。
+ * 选中由按钮的 aria-current="page"(导航项)或 aria-checked="true"(游戏切换)表示。
+ * 图标里带 .anim 的部件按 a-* 类决定动作;关键帧首尾都是静止状态,循环与中断都不跳。
+ */
+
+.ic * {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.ic .o-top {
+  transform-origin: top center;
+}
+
+.ic .a-bob { --ic-a: ic-bob; }
+.ic .a-pulse { --ic-a: ic-pulse; }
+.ic .a-flash { --ic-a: ic-flash; }
+.ic .a-spin { --ic-a: ic-spin; }
+.ic .a-swing { --ic-a: ic-swing; }
+.ic .a-drop { --ic-a: ic-drop; }
+.ic .a-rise { --ic-a: ic-rise; }
+.ic .a-blink { --ic-a: ic-blink; }
+.ic .a-twinkle { --ic-a: ic-twinkle; }
+.ic .a-in-l { --ic-a: ic-in-l; }
+.ic .a-in-r { --ic-a: ic-in-r; }
+.ic .a-slide { --ic-a: ic-slide; }
+.ic .a-needle { --ic-a: ic-needle; }
+.ic .a-draw { --ic-a: ic-draw; }
+.ic .a-sweep { --ic-a: ic-sweep; }
+
+@media (prefers-reduced-motion: no-preference) {
+  :where(button:hover, a:hover) .ic .anim {
+    animation: var(--ic-a) 0.8s ease-in-out;
+  }
+  :where([aria-current="page"], [aria-checked="true"]) .ic .anim {
+    animation: var(--ic-a) 2.6s ease-in-out infinite;
+  }
+  .ic .anim.a-spin,
+  .ic .anim.a-draw {
+    animation-timing-function: linear;
+  }
+}
+
+@keyframes ic-bob {
+  50% { transform: translateY(-2px); }
+}
+@keyframes ic-pulse {
+  50% { transform: scale(1.18); }
+}
+@keyframes ic-flash {
+  50% { opacity: 0.35; }
+}
+@keyframes ic-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes ic-swing {
+  25% { transform: rotate(-14deg); }
+  75% { transform: rotate(14deg); }
+}
+@keyframes ic-drop {
+  50% { transform: translateY(2.5px); }
+}
+@keyframes ic-rise {
+  50% { transform: translateY(-2.5px); }
+}
+@keyframes ic-blink {
+  0%, 40%, 50%, 100% { transform: scaleY(1); }
+  45% { transform: scaleY(0.1); }
+}
+@keyframes ic-twinkle {
+  50% { opacity: 0.15; transform: scale(0.6); }
+}
+@keyframes ic-in-l {
+  50% { transform: translateX(1.25px); }
+}
+@keyframes ic-in-r {
+  50% { transform: translateX(-1.25px); }
+}
+@keyframes ic-slide {
+  50% { transform: translateX(2px); }
+}
+@keyframes ic-needle {
+  30% { transform: rotate(-30deg); }
+  65% { transform: rotate(18deg); }
+}
+/* 配合 pathLength=1、stroke-dasharray="1 1":先从头擦掉,再从头画出 */
+@keyframes ic-draw {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -2; }
+}
+/* 一道高光从左扫到右,之后停在图形外 */
+@keyframes ic-sweep {
+  0% { transform: translateX(0); }
+  40%, 100% { transform: translateX(34px); }
+}

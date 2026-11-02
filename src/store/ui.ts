@@ -80,13 +80,8 @@ export const useUI = create<UIState>((set) => ({
   setFilters: (patch) => set((st) => ({ filters: { ...st.filters, ...patch } })),
   // 换分区时清空选中,没有点击内容就不显示详情栏
   setSection: (section) => set((st) => ({ section, game: gameOf(section) ?? st.game, search: "", diffFilter: "all", selection: null })),
-  // 切换游戏时跳到该游戏的第一个分区
-  setGame: (game) =>
-    set((st) =>
-      game === "lol"
-        ? { game, section: "champions", search: "", diffFilter: "all", selection: null }
-        : { game, section: "tft", filters: { ...st.filters, tftSet: "" }, search: "", diffFilter: "all", selection: null },
-    ),
+  // 切换游戏时跳到该游戏的第一个分区;云顶赛季保留上次的选择
+  setGame: (game) => set({ game, section: game === "lol" ? "champions" : "tft", search: "", diffFilter: "all", selection: null }),
   setVersion: (version) => set({ version }),
   setCompareVersion: (compareVersion) => set({ compareVersion, diffFilter: "all" }),
   setDiffFilter: (diffFilter) => set({ diffFilter }),

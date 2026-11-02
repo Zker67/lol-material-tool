@@ -59,20 +59,26 @@ export function AssetTile({
       onClick={onSelect}
       title={entry.previousName ? `原名:${entry.previousName}` : entry.title}
       className={cn(
-        "group relative flex w-full flex-col overflow-hidden rounded-md border bg-card text-left transition-all duration-200",
-        "hover:-translate-y-0.5 hover:border-hex-gold/70 hover:shadow-[0_0_14px_rgb(200_170_110/0.25)]",
-        selected ? "border-hex-blue shadow-[0_0_16px_rgb(10_200_185/0.35)]" : "border-border",
+        // 直角青铜框(客户端收藏页的格子);选中换成金属金边 + 柔和金光
+        "group relative flex w-full flex-col overflow-hidden border bg-hex-bg-2 text-left transition-[border-color,box-shadow] duration-200 focus-visible:outline-2 focus-visible:outline-hex-blue",
+        selected ? "hex-edge shadow-[0_0_18px_rgb(200_170_110/0.3)]" : "border-hex-gold-dark/45 hover:border-hex-gold/70",
         entry.diff === "removed" && "opacity-55",
       )}
     >
-      <AssetImage path={entry.image} alt={entry.title} fit={fit} className="w-full" style={imageStyle} />
+      <AssetImage
+        path={entry.image}
+        alt={entry.title}
+        fit={fit}
+        className="w-full transition-[filter] duration-200 group-hover:brightness-110"
+        style={imageStyle}
+      />
       {badge && (
         <span className={cn("absolute top-1.5 left-1.5 rounded-sm px-1.5 py-0.5 text-[10px] font-bold", badge.className)}>
           {badge.label}
         </span>
       )}
-      <div className="flex h-[42px] flex-col justify-center px-2">
-        <span className="truncate text-sm font-semibold text-hex-gold-light group-hover:text-hex-gold">{entry.title}</span>
+      <div className="flex h-[42px] flex-col justify-center border-t border-hex-gold-dark/30 bg-linear-to-b from-hex-bg-2 to-hex-bg px-2">
+        <span className={cn("truncate text-sm font-semibold", selected ? "text-hex-gold" : "text-hex-gold-light group-hover:text-hex-gold")}>{entry.title}</span>
         {entry.subtitle && <span className="truncate text-[11px] text-muted-foreground">{entry.subtitle}</span>}
       </div>
     </button>

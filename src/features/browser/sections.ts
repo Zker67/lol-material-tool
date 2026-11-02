@@ -1,4 +1,4 @@
-import type { Catalog, Champion, ExportItem, Skin } from "@/mygo";
+import type { Catalog, Champion, ExportItem, Skin, TFTSeason } from "@/mygo";
 import { diffEntries, matches, type DiffState } from "@/lib/assets";
 import type { DiffFilter } from "@/store/ui";
 import type { GridEntry, GridGroup } from "./AssetGrid";
@@ -40,7 +40,8 @@ export interface Filters {
   storeOnly: boolean;
   itemTag: string;
   tftCategory: string;
-  tftSet: string;
+  /** 云顶赛季,各分类共用:null 为还没选过(用该版本的默认赛季),"" 为全部赛季 */
+  tftSet: string | null;
   /** 英雄分区按英雄还是按皮肤显示 */
   championView: ChampionView;
   /** 皮肤显示时只看某位英雄(英雄 ID),空为全部 */
@@ -54,7 +55,7 @@ export const DEFAULT_FILTERS: Filters = {
   storeOnly: true,
   itemTag: "",
   tftCategory: "弈子",
-  tftSet: "",
+  tftSet: null,
   championView: "champions",
   skinChampion: "",
 };
@@ -282,17 +283,70 @@ export function summonersSection(cat: Catalog, cmp: Catalog | undefined, q: stri
   };
 }
 
+/** 弈子图是 2:1 横图,人脸多在偏右处;放进方形小图标裁切时取靠右的一段,让脸居中(加在 AssetImage 的 className 上) */
+export const TFT_FACE_CROP = "[&_img]:object-[85%_50%]";
+
 /** 云顶条目的 ID 在不同分类间可能重复,加上分类区分 */
 export const tftKey = (e: Catalog["tft"][number]) => `${e.category}:${e.id || e.name}`;
 
-export function tftSets(cat: Catalog, category: string): string[] {
-  const sets = new Set(cat.tft.filter((e) => e.category === category && e.set).map((e) => e.set));
-  return [...sets].sort((a, b) => Number(b) - Number(a));
+/** 分赛季的云顶分类;小小英雄、棋盘皮肤、地区传送门不分赛季 */
+export const TFT_SEASONAL = new Set(["弈子", "羁绊", "装备", "海克斯强化"]);
+
+/** 赛季条上的一项 */
+export interface SeasonOption {
+  number: string;
+  name: string;
+  isDefault: boolean;
 }
 
-export function tftSection(cat: Catalog, cmp: Catalog | undefined, q: string, f: Filters, df: DiffFilter): SectionResult {
-  const pick = (c: Catalog) =>
-    c.tft.filter((e) => e.category === f.tftCategory && (!f.tftSet || e.set === f.tftSet) && matches(q, e.name, e.id));
+/**
+ * 赛季选项(从新到旧):有 CommunityDragon 名单时只列本版本目录里有弈子的赛季;
+ * 名单读不到(加载中、失败)时退回弈子 ID 前缀推出的赛季号。
+ */
+export function seasonOptions(cat: Catalog, seasons: TFTSeason[] | undefined): SeasonOption[] {
+  const champions = cat.tft.filter((e) => e.category === "弈子");
+  if (seasons) {
+    const ids = new Set(champions.map((e) => e.id));
+    return seasons
+      .filter((s) => (s.members["弈子"] ?? []).some((id) => ids.has(id)))
+      .map((s) => ({ number: s.number, name: s.name, isDefault: s.default }));
+  }
+  return [...new Set(champions.map((e) => e.set).filter(Boolean))]
+    .sort((a, b) => Number(b) - Number(a))
+    .map((number) => ({ number, name: "", isDefault: false }));
+}
+
+/** 实际生效的赛季:选过且本版本有就用所选,否则用默认赛季;"" 为全部 */
+export function effectiveSeason(chosen: string | null, options: SeasonOption[]): string {
+  if (chosen === "" || (chosen && options.some((o) => o.number === chosen))) return chosen;
+  return options.find((o) => o.isDefault)?.number ?? "";
+}
+
+/**
+ * 某个赛季的条目筛选:有该赛季名单的分类按名单(无尽之刃这类通用装备 ID 里没有赛季号,也在名单里);
+ * 没有名单时按 ID 前缀,装备与海克斯强化另外保留通用的 TFT_ 条目。
+ */
+export function seasonFilter(season: string, seasons: TFTSeason[] | undefined): (e: Catalog["tft"][number]) => boolean {
+  if (!season) return () => true;
+  const members = seasons?.find((s) => s.number === season)?.members ?? {};
+  const sets = new Map(Object.entries(members).map(([k, ids]) => [k, new Set(ids)]));
+  return (e) => {
+    if (!TFT_SEASONAL.has(e.category)) return true;
+    const list = sets.get(e.category);
+    if (list) return list.has(e.id);
+    return e.set === season || ((e.category === "装备" || e.category === "海克斯强化") && e.id.startsWith("TFT_"));
+  };
+}
+
+export function tftSection(
+  cat: Catalog,
+  cmp: Catalog | undefined,
+  q: string,
+  f: Filters,
+  df: DiffFilter,
+  inSeason: (e: Catalog["tft"][number]) => boolean,
+): SectionResult {
+  const pick = (c: Catalog) => c.tft.filter((e) => e.category === f.tftCategory && inSeason(e) && matches(q, e.name, e.id));
   const toEntry = (e: Catalog["tft"][number]): GridEntry => ({
     id: tftKey(e),
     title: e.name,

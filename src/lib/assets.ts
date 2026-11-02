@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { isMyGo, runtime } from "mygo-runtime";
-import { Assets, Tasks, type Catalog, type ChampionArt } from "../mygo";
+import { Assets, Tasks, type Catalog, type ChampionArt, type TFTDetail, type TFTSeason } from "../mygo";
 
 /**
  * 素材路径(如 `ddragon/cdn/16.21.1/img/champion/Ahri.png`)→ 页面可加载的地址。
@@ -63,6 +63,31 @@ export function useChampionArt(version: string | null | undefined, key: string |
     queryKey: ["championArt", version, key],
     queryFn: async () => (await Assets.championArt(version!, key!)) as ChampionArt,
     enabled: enabled && !!version && !!key,
+    staleTime: Infinity,
+    retry: false,
+  });
+}
+
+/** 有 CommunityDragon 资料的云顶分类(地区传送门的说明 Data Dragon 自带) */
+export const TFT_DETAIL_CATEGORIES = new Set(["弈子", "羁绊", "装备", "海克斯强化", "小小英雄", "棋盘皮肤"]);
+
+/** 某个版本下一项云顶素材的说明、数值、合成、技能等资料(CommunityDragon);每个补丁第一次读取要下载约 24 MB */
+export function useTFTDetail(version: string | null | undefined, category: string, id: string) {
+  return useQuery({
+    queryKey: ["tftDetail", version, category, id],
+    queryFn: async () => (await Assets.tftDetail(version!, category, id)) as TFTDetail | null,
+    enabled: !!version && !!id && TFT_DETAIL_CATEGORIES.has(category),
+    staleTime: Infinity,
+    retry: false,
+  });
+}
+
+/** 某个版本的云顶赛季与各赛季的条目名单(CommunityDragon,与 useTFTDetail 共用同一份数据) */
+export function useTFTSeasons(version: string | null | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["tftSeasons", version],
+    queryFn: async () => (await Assets.tftSeasons(version!)) as TFTSeason[],
+    enabled: enabled && !!version,
     staleTime: Infinity,
     retry: false,
   });

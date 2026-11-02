@@ -1,33 +1,32 @@
-import { useEffect } from "react";
+import { useEffect, type ComponentType } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  Boxes,
-  CircleHelp,
-  CloudDownload,
-  Crown,
-  Database,
-  DoorOpen,
-  FolderDown,
-  FolderCog,
-  Gem,
-  Grid3x3,
-  Hammer,
-  Hexagon,
-  Link2,
-  Map as MapIcon,
-  PawPrint,
-  Search,
-  Sparkles,
-  Swords,
-  Wand2,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { Database, FolderDown, Search, X } from "lucide-react";
+import { motion } from "motion/react";
 import { Assets } from "@/mygo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  ArenaIcon,
+  AugmentIcon,
+  ChampionIcon,
+  CompassIcon,
+  DownloadIcon,
+  ForgeIcon,
+  GuideIcon,
+  ItemIcon,
+  LegendIcon,
+  LolMark,
+  OrganizeIcon,
+  PortalIcon,
+  RuneIcon,
+  SummonerIcon,
+  TftMark,
+  TraitIcon,
+  UnitIcon,
+  type IconProps,
+} from "@/components/icons";
 import { errorMessage, openPath, pickDirectory } from "@/lib/api";
 import { loadSaveDir, setSaveDir, useSaveDir } from "@/lib/save";
 import { cn, formatBytes } from "@/lib/utils";
@@ -37,41 +36,43 @@ import { useUI, type Game, type Section } from "@/store/ui";
 interface NavItem {
   key: Section;
   label: string;
-  icon: LucideIcon;
+  icon: ComponentType<IconProps>;
   tftCategory?: string;
 }
 
-const GAMES: { key: Game; label: string; items: NavItem[] }[] = [
+const GAMES: { key: Game; label: string; icon: ComponentType<IconProps>; items: NavItem[] }[] = [
   {
     key: "lol",
     label: "英雄联盟",
+    icon: LolMark,
     items: [
-      { key: "champions", label: "英雄", icon: Swords },
-      { key: "items", label: "装备", icon: Gem },
-      { key: "runes", label: "符文", icon: Sparkles },
-      { key: "summoners", label: "召唤师技能", icon: Wand2 },
+      { key: "champions", label: "英雄", icon: ChampionIcon },
+      { key: "items", label: "装备", icon: ItemIcon },
+      { key: "runes", label: "符文", icon: RuneIcon },
+      { key: "summoners", label: "召唤师技能", icon: SummonerIcon },
     ],
   },
   {
     key: "tft",
     label: "云顶之弈",
+    icon: TftMark,
     items: [
-      { key: "tft", tftCategory: "弈子", label: "弈子", icon: Crown },
-      { key: "tft", tftCategory: "羁绊", label: "羁绊", icon: Link2 },
-      { key: "tft", tftCategory: "装备", label: "装备", icon: Hammer },
-      { key: "tft", tftCategory: "海克斯强化", label: "海克斯强化", icon: Hexagon },
-      { key: "tft", tftCategory: "小小英雄", label: "小小英雄", icon: PawPrint },
-      { key: "tft", tftCategory: "棋盘皮肤", label: "棋盘皮肤", icon: Grid3x3 },
-      { key: "tft", tftCategory: "地区传送门", label: "地区传送门", icon: DoorOpen },
+      { key: "tft", tftCategory: "弈子", label: "弈子", icon: UnitIcon },
+      { key: "tft", tftCategory: "羁绊", label: "羁绊", icon: TraitIcon },
+      { key: "tft", tftCategory: "装备", label: "装备", icon: ForgeIcon },
+      { key: "tft", tftCategory: "海克斯强化", label: "海克斯强化", icon: AugmentIcon },
+      { key: "tft", tftCategory: "小小英雄", label: "小小英雄", icon: LegendIcon },
+      { key: "tft", tftCategory: "棋盘皮肤", label: "棋盘皮肤", icon: ArenaIcon },
+      { key: "tft", tftCategory: "地区传送门", label: "地区传送门", icon: PortalIcon },
     ],
   },
 ];
 
 const TOOLS: NavItem[] = [
-  { key: "download", label: "整包下载", icon: CloudDownload },
-  { key: "localize", label: "汉化整理", icon: FolderCog },
-  { key: "nav", label: "导航", icon: MapIcon },
-  { key: "help", label: "说明", icon: CircleHelp },
+  { key: "download", label: "整包下载", icon: DownloadIcon },
+  { key: "localize", label: "汉化整理", icon: OrganizeIcon },
+  { key: "nav", label: "导航", icon: CompassIcon },
+  { key: "help", label: "说明", icon: GuideIcon },
 ];
 
 function NavButton({ item, active, onClick }: { item: NavItem; active: boolean; onClick: () => void }) {
@@ -80,21 +81,35 @@ function NavButton({ item, active, onClick }: { item: NavItem; active: boolean; 
     <button
       type="button"
       onClick={onClick}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
-        active
-          ? "bg-sidebar-accent font-semibold text-hex-gold before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-hex-gold"
-          : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+        "group/nav relative isolate flex w-full items-center gap-2.5 rounded-sm px-2.5 py-2 text-sm transition-colors",
+        active ? "font-semibold text-hex-gold-light" : "text-sidebar-foreground/75 hover:bg-white/4 hover:text-sidebar-foreground",
       )}
     >
-      <Icon className="size-4" />
+      {/* 选中:左侧一道发光金条,底色从海克斯青向右淡出;切换时整块滑到新的一项(含底部整包工具) */}
+      {active && (
+        <motion.span
+          layoutId="nav-active"
+          className="pointer-events-none absolute inset-0 -z-10 rounded-sm bg-linear-to-r from-hex-blue/15 via-hex-blue/5 to-transparent"
+        >
+          <span className="absolute inset-y-1 left-0 w-[3px] bg-hex-gold shadow-[0_0_8px_rgb(200_170_110/0.8)]" />
+        </motion.span>
+      )}
+      <Icon className={cn("size-4 transition-colors", active ? "text-hex-gold" : "text-hex-gold/45 group-hover/nav:text-hex-gold/80")} />
       {item.label}
     </button>
   );
 }
 
+/** 分组标题:小字 + 向右淡出的青铜细线 */
 function GroupTitle({ children }: { children: string }) {
-  return <div className="px-2.5 pb-1 text-[10px] font-semibold tracking-[0.2em] text-muted-foreground/80 uppercase">{children}</div>;
+  return (
+    <div className="flex items-center gap-2 px-2.5 pb-1.5 text-[11px] text-hex-gold/70">
+      {children}
+      <span className="h-px flex-1 bg-linear-to-r from-hex-gold-dark/70 to-transparent" />
+    </div>
+  );
 }
 
 /** 素材缓存的占用与清理 */
@@ -252,20 +267,13 @@ export function Sidebar() {
 
   const go = (item: NavItem) => {
     setSection(item.key);
-    if (item.tftCategory) setFilters({ tftCategory: item.tftCategory, tftSet: "" });
+    if (item.tftCategory) setFilters({ tftCategory: item.tftCategory }); // 赛季在各分类间共用,不重置
   };
   const isActive = (item: NavItem) => section === item.key && (!item.tftCategory || item.tftCategory === tftCategory);
 
   return (
     <aside className="flex w-48 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-      <div className="flex items-center gap-2 px-4 pt-4 pb-3">
-        <Boxes className="size-5 text-hex-gold" />
-        <div className="leading-tight">
-          <div className="font-heading text-sm font-bold tracking-wide text-hex-gold">英雄联盟素材</div>
-          <div className="text-[10px] text-muted-foreground">获取 · 浏览 · 整理</div>
-        </div>
-      </div>
-      <div className="px-2 pb-1">
+      <div className="px-2 pt-3 pb-1">
         <SidebarSearch label={current.items.find(isActive)?.label} />
       </div>
       {/* 只有素材浏览的分区列表滚动,整包工具固定在底部 */}
@@ -282,10 +290,12 @@ export function Sidebar() {
                 aria-checked={g.key === game}
                 onClick={() => g.key !== game && setGame(g.key)}
                 className={cn(
-                  "flex-1 rounded-[5px] py-1 text-xs transition-colors",
-                  g.key === game ? "bg-hex-gold/15 font-semibold text-hex-gold-light shadow-sm" : "text-muted-foreground hover:text-foreground",
+                  "relative isolate flex flex-1 items-center justify-center gap-1 rounded-[5px] py-1 text-xs transition-colors",
+                  g.key === game ? "font-semibold text-hex-gold-light" : "text-muted-foreground hover:text-foreground",
                 )}
               >
+                {g.key === game && <motion.span layoutId="game-active" className="pointer-events-none absolute inset-0 -z-10 rounded-[5px] bg-hex-gold/15 shadow-sm" />}
+                <g.icon className={cn("size-3.5 shrink-0", g.key === game && "text-hex-gold")} />
                 {g.label}
               </button>
             ))}

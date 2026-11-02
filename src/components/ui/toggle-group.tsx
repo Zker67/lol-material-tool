@@ -4,13 +4,17 @@ import * as React from "react"
 import { type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui"
+import { LayoutGroup, motion } from "motion/react"
 
 import { toggleVariants } from "@/components/ui/toggle"
+import { ACTIVE_PILL } from "@/lib/motion"
 
 const ToggleGroupContext = React.createContext<
   VariantProps<typeof toggleVariants> & {
     spacing?: number
     orientation?: "horizontal" | "vertical"
+    /** 单选时的当前值:选中块在各项之间滑动(多选时不显示滑块) */
+    selected?: string
   }
 >({
   size: "default",
@@ -32,6 +36,7 @@ function ToggleGroup({
     spacing?: number
     orientation?: "horizontal" | "vertical"
   }) {
+  const groupId = React.useId()
   return (
     <ToggleGroupPrimitive.Root
       data-slot="toggle-group"
@@ -47,9 +52,10 @@ function ToggleGroup({
       {...props}
     >
       <ToggleGroupContext.Provider
-        value={{ variant, size, spacing, orientation }}
+        value={{ variant, size, spacing, orientation, selected: props.type === "single" ? props.value : undefined }}
       >
-        {children}
+        {/* 每组各自的命名空间,避免多个组的滑块串到一起 */}
+        <LayoutGroup id={groupId}>{children}</LayoutGroup>
       </ToggleGroupContext.Provider>
     </ToggleGroupPrimitive.Root>
   )
@@ -64,6 +70,7 @@ function ToggleGroupItem({
 }: React.ComponentProps<typeof ToggleGroupPrimitive.Item> &
   VariantProps<typeof toggleVariants>) {
   const context = React.useContext(ToggleGroupContext)
+  const sliding = context.selected !== undefined
 
   return (
     <ToggleGroupPrimitive.Item
@@ -77,10 +84,13 @@ function ToggleGroupItem({
           variant: context.variant || variant,
           size: context.size || size,
         }),
+        // 单选时由滑块表示选中,本身不再铺底色
+        sliding && "relative isolate data-[state=on]:bg-transparent data-[state=on]:text-hex-gold-light",
         className
       )}
       {...props}
     >
+      {sliding && context.selected === props.value && <motion.span layoutId="toggle-active" className={ACTIVE_PILL} />}
       {children}
     </ToggleGroupPrimitive.Item>
   )

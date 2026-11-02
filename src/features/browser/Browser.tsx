@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { FolderDown, Loader2, X } from "lucide-react";
+import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -8,7 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { HextechProgressBar } from "@/components/HextechProgressBar";
 import { cancelTask, errorMessage, type TaskProgress } from "@/lib/api";
-import { useCatalog, useVersions } from "@/lib/assets";
+import { useCatalog, useTFTSeasons, useVersions } from "@/lib/assets";
+import { ENTER } from "@/lib/motion";
 import { useUI, type DiffFilter, type Section } from "@/store/ui";
 import { AssetGrid, SimpleGrid, type GridEntry, type GridGroup } from "./AssetGrid";
 import { DetailPanel, exportTo } from "./DetailPanel";
@@ -16,17 +18,21 @@ import { VersionPicker } from "./VersionPicker";
 import type { Champion } from "@/mygo";
 import { ChampionPicker } from "./ChampionPicker";
 import { RuneStyleCard } from "./RuneTree";
+import { SeasonBar } from "./SeasonBar";
 import {
   ITEM_TAGS,
   ROLE_LABELS,
+  TFT_SEASONAL,
   championsSection,
+  effectiveSeason,
   itemsSection,
   runesSection,
+  seasonFilter,
+  seasonOptions,
   skinKey,
   skinsSection,
   summonersSection,
   tftSection,
-  tftSets,
   type ChampionView,
   type RuneGroup,
   type SectionResult,
@@ -42,12 +48,15 @@ const TITLES: Partial<Record<Section, string>> = {
 /** 网格实际显示的内容:英雄分区可切换为按皮肤显示 */
 type View = Section | "skins";
 
+/** 云顶里横图分类的高宽比(弈子 256×128、小小英雄 512×344),其余分类是方图 */
+const TFT_ASPECT: Record<string, number> = { 弈子: 1 / 2, 小小英雄: 344 / 512 };
+
 /** 筛选控件旁的小标签 */
 function FilterLabel({ children }: { children: string }) {
   return <span className="text-xs text-muted-foreground">{children}</span>;
 }
 
-function SectionFilters({ section, tftSetOptions, champions }: { section: Section; tftSetOptions: string[]; champions: Champion[] }) {
+function SectionFilters({ section, champions }: { section: Section; champions: Champion[] }) {
   const filters = useUI((s) => s.filters);
   const setFilters = useUI((s) => s.setFilters);
   const historyArt = useUI((s) => s.historyArt);
@@ -103,26 +112,6 @@ function SectionFilters({ section, tftSetOptions, champions }: { section: Sectio
             ))}
           </SelectContent>
         </Select>
-      </div>
-    );
-  if (section === "tft")
-    return (
-      <div className="flex items-center gap-3">
-        {tftSetOptions.length > 0 && (
-          <Select value={filters.tftSet || "all"} onValueChange={(v) => setFilters({ tftSet: v === "all" ? "" : v })}>
-            <SelectTrigger size="sm" className="h-8 w-24 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部赛季</SelectItem>
-              {tftSetOptions.map((s) => (
-                <SelectItem key={s} value={s}>
-                  S{s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
       </div>
     );
   return null;
@@ -198,8 +187,15 @@ export function Browser({ progress }: { progress: TaskProgress | null }) {
   const cat = catalog.data;
   const cmp = compareVersion ? compare.data : undefined;
 
-  const tftSetOptions = useMemo(() => (cat ? tftSets(cat, filters.tftCategory) : []), [cat, filters.tftCategory]);
+  // 云顶赛季:各分类共用,没选过时用该版本的默认赛季
+  const setFilters = useUI((s) => s.setFilters);
+  const seasons = useTFTSeasons(version, section === "tft");
+  const seasonOpts = useMemo(() => (cat ? seasonOptions(cat, seasons.data) : []), [cat, seasons.data]);
+  const season = effectiveSeason(filters.tftSet, seasonOpts);
+  const inSeason = useMemo(() => seasonFilter(season, seasons.data), [season, seasons.data]);
+  const seasonal = TFT_SEASONAL.has(filters.tftCategory);
   const view: View = section === "champions" && filters.championView === "skins" ? "skins" : section;
+  const tftAspect = section === "tft" ? TFT_ASPECT[filters.tftCategory] : undefined;
 
   const result = useMemo((): (SectionResult & { groups?: RuneGroup[]; skinGroups?: GridGroup[] }) | null => {
     if (!cat) return null;
@@ -219,10 +215,10 @@ export function Browser({ progress }: { progress: TaskProgress | null }) {
       case "summoners":
         return summonersSection(cat, cmp, search, diffFilter);
       case "tft":
-        return tftSection(cat, cmp, search, filters, diffFilter);
+        return tftSection(cat, cmp, search, filters, diffFilter, inSeason);
     }
     return null;
-  }, [cat, cmp, view, search, filters, diffFilter]);
+  }, [cat, cmp, view, search, filters, diffFilter, inSeason]);
 
   // 选中的条目对应到网格里的 ID
   const selectedId =
@@ -251,7 +247,7 @@ export function Browser({ progress }: { progress: TaskProgress | null }) {
   const exporting = progress?.stage === "export" && !progress.done;
   // 云顶各分类在侧边栏单独列出,标题直接用分类名;导出目录加「云顶」前缀,避免和英雄联盟的装备重名
   const title = section === "tft" ? filters.tftCategory : (TITLES[section] ?? "");
-  const exportTitle = section === "tft" ? `云顶${filters.tftCategory}` : title;
+  const exportTitle = section === "tft" ? `云顶${seasonal && season ? `S${season}` : ""}${filters.tftCategory}` : title;
   const emptyHint =
     section === "tft" && cat && cat.tft.length === 0
       ? "该版本没有云顶数据(13.1 起提供)"
@@ -262,10 +258,26 @@ export function Browser({ progress }: { progress: TaskProgress | null }) {
   return (
     <div className="flex h-full flex-col">
       {/* 工具栏 */}
-      <div className="shrink-0 space-y-2.5 border-b border-border bg-sidebar/60 px-4 py-3">
+      <div className="relative shrink-0 space-y-2.5 bg-linear-to-b from-hex-bg-2/80 to-sidebar/40 px-4 py-3">
+        {/* 底边:中间亮、两端淡出的青铜线 */}
+        <div className="hex-rule absolute inset-x-0 bottom-0" />
+        {section === "tft" && cat && cat.tft.length > 0 && (
+          <SeasonBar
+            options={seasonOpts}
+            value={season}
+            onChange={(s) => setFilters({ tftSet: s })}
+            category={filters.tftCategory}
+            seasonal={seasonal}
+            loading={seasons.isLoading}
+          />
+        )}
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="mr-1 font-heading text-lg font-bold text-hex-gold">{title}</h2>
-          {result && <span className="mr-2 text-xs text-muted-foreground">{result.total} 项</span>}
+          <h2 className="hex-title font-heading text-xl font-bold">{title}</h2>
+          {result && (
+            <span className="mr-3 text-xs text-muted-foreground">
+              <span className="font-display text-sm font-semibold text-hex-gold/80">{result.total}</span> 项
+            </span>
+          )}
           <VersionPicker label="版本" versions={versions.data ?? []} value={version} onChange={(v) => v && setVersion(v)} />
           <VersionPicker
             label="对比"
@@ -291,7 +303,7 @@ export function Browser({ progress }: { progress: TaskProgress | null }) {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <SectionFilters section={section} tftSetOptions={tftSetOptions} champions={cat?.champions ?? []} />
+          <SectionFilters section={section} champions={cat?.champions ?? []} />
           {compareVersion && (
             <div className="flex items-center gap-2">
               <FilterLabel>{`对比 ${compareVersion}`}</FilterLabel>
@@ -333,19 +345,22 @@ export function Browser({ progress }: { progress: TaskProgress | null }) {
               </div>
             </ScrollArea>
           ) : (
-            <AssetGrid
-              key={view}
-              entries={result.entries}
-              groups={result.skinGroups}
-              activeGroup={selection?.kind === "champion" ? selection.id : undefined}
-              onGroupClick={(g) => select({ kind: "champion", id: g.key })}
-              tileWidth={view === "champions" ? 104 : view === "skins" ? 132 : 92}
-              aspect={view === "skins" ? 560 / 308 : 1}
-              fit={view === "champions" || view === "skins" ? "cover" : "contain"}
-              selectedId={selectedId}
-              onSelect={onSelect}
-              empty={emptyHint}
-            />
+            // 换分区、云顶分类或赛季时网格淡入
+            <motion.div key={`${view}:${section === "tft" ? `${filters.tftCategory}:${season}` : ""}`} {...ENTER} className="h-full">
+              <AssetGrid
+                key={view}
+                entries={result.entries}
+                groups={result.skinGroups}
+                activeGroup={selection?.kind === "champion" ? selection.id : undefined}
+                onGroupClick={(g) => select({ kind: "champion", id: g.key })}
+                tileWidth={view === "champions" ? 104 : view === "skins" ? 132 : 92}
+                aspect={view === "skins" ? 560 / 308 : (tftAspect ?? 1)}
+                fit={view === "champions" || view === "skins" || tftAspect ? "cover" : "contain"}
+                selectedId={selectedId}
+                onSelect={onSelect}
+                empty={emptyHint}
+              />
+            </motion.div>
           )}
         </ResizablePanel>
         {/* 没有点击内容时不显示详情栏 */}

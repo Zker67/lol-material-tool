@@ -48,6 +48,7 @@
 - **历史原画**:`Assets.championArt` 读 CommunityDragon 对应 major.minor 版本的英雄 JSON,给出原画、未居中原画、加载图、炫彩与配色。
 - **导出**:`Tasks.exportAssets` 按中文名写文件,走 `task:progress` 进度,可取消;官方已不提供的文件计入 `Missing`,不中断。
 - **文字资料**:目录同时带出官方文本——英雄 `lore` / `blurb` / `allytips` / `enemytips` / `info` / `stats`、技能 `description` 与 `cooldownBurn` / `costBurn`(按 `resource` 模板拼出「55/65/75 法力」)/ `rangeBurn`、装备 `description` / `from` / `into` / `gold`、符文 `shortDesc` / `longDesc`、旧符文与天赋 `description`(天赋按等级逐条)、召唤师技能冷却与解锁等级、云顶 `cost` 与 `description` / `shortDescription`;皮肤背景、稀有度、绝版与系列来自 CommunityDragon(`skinlines.json`)。前端 `RichText` 把 Riot 标记解析成节点树再渲染(不用 innerHTML),官方没填的数值(`@HealAmount@`、`<placeholder>`)显示为「?」。
+- **云顶资料**(2026-11-02):Data Dragon 的云顶 JSON 只有 `id` / `name` / `image`(海克斯强化、地区传送门另有说明)。`Assets.tftDetail(version, category, id)` 按 ID 读 CommunityDragon 同补丁数据:`cdragon/tft/zh_cn.json`(装备与海克斯强化按 `apiName`,`sets` 优先于 `setData` 的弈子与羁绊)、`v1/companions.json` 与 `v1/tftmapskins.json`(按 `itemId`)。Go 端 `TFTLibrary` 每个补丁解析一次并缓存在内存;说明里的 `@变量@` 用条目自身的 `effects` / `variables` 代入(不分大小写,兼认 FNV-1a 哈希名 `{xxxxxxxx}`,弈子技能取 1–3 星,`ModifiedX` 退回 `X` / `BaseX`),`%i:scaleAP%` 换成属性文字,羁绊的 `<row>` 依次对应各档、`<expandRow>` 按档展开,成对的 `ShowIf` / `ShowIfNot` 只留通用写法。弈子属性数据只有 1 星,2、3 星按全局升星倍率推算:生命值 ×1.8 / ×3.24,攻击力 ×1.5 / ×2.25(12.14 起;游戏数据 `map22.bin` 与角色记录里都没有导出这组倍率),其余属性不变。赛季筛选:`Assets.tftSeasons(version)` 取 `setData` 中 mutator 为 `TFTSet{n}` 的主模式名单(弈子、羁绊,16.x 起另有 `items` / `augments`),中文名与默认赛季取 `v1/tftsets.json` 里 `SetName == SetCoreName` 的条目;页面只列本版本目录里有弈子的赛季,所选赛季在云顶各分类间共用(`filters.tftSet`:null 用默认、"" 为全部),没有名单的分类退回 ID 前缀(装备、强化另保留通用 `TFT_` 条目),小小英雄 / 棋盘皮肤 / 地区传送门不分赛季。
 - **皮肤与英雄**:皮肤页按英雄分组(组标题可点开英雄详情),支持只看某位英雄。
 - **前端状态**:TanStack Query 管请求缓存,Zustand 管分区 / 版本 / 选中项 / 筛选,TanStack Virtual 渲染上百张卡片的网格。
 
@@ -61,6 +62,7 @@
 | 历史原画 | 真实接口:CommunityDragon 7.1 / 10.1 / 14.10 的英雄原画 | 通过 |
 | 缓存与导出 | 真实接口拉取并写盘、TTL 规则、路径校验、导出文件名清洗 | 通过 |
 | 文字资料 | 真实接口:16.21.1 阿狸背景 / 技巧 / 评分 / 属性、Q 的冷却与「…法力」消耗、无尽之刃描述与合成路线、符文与闪现说明、海克斯强化说明与弈子费用;3.6.14 旧符文与天赋说明;CommunityDragon 14.10 皮肤背景、系列、稀有度;消耗模板与天赋多等级的单元测试;16.21.1 全部 3634 段文本经解析后无残留标记或占位符 | 通过 |
+| 云顶资料 | 真实接口:16.21 与 13.1 两个补丁下,Data Dragon 目录里的弈子 / 羁绊 / 装备 / 海克斯强化 / 小小英雄 / 棋盘皮肤全部找到资料(16.21 共 4817 项);无尽之刃合成与属性、暴风大剑可合成、阿狸技能 1–3 星数值与原画、羁绊所含弈子、小小英雄与棋盘描述;变量代入、哈希名、`ShowIf`、羁绊行展开的单元测试 | 通过 |
 | 前端 / 打包 | `bun run typecheck`、`bun run build` | 通过 |
 | 冒烟 | 启动 exe,经 `http://lmt.localhost` 缓存了 16.21.1 的 zh_CN JSON 与首屏头像 | 通过 |
 | 界面 | 侧边栏、网格、详情、对比角标、历史原画切换、炫彩、Ctrl+K、导出、下载页整包提示 | 待用户验收 |
@@ -69,4 +71,5 @@
 
 - CommunityDragon 不是官方服务,路径或可用性可能变化;7.1 以前没有历史原画。
 - 7.x 以前的整包里原画很少,汉化结果中的皮肤原画会相应缺失。
+- 云顶说明里游戏运行时才算出的值(总伤害、含 `:` 的单位属性等)数据里没有,显示为「?」;16.21 约 700 处,多在新手教程与 `DA_` 模式单位。
 - 召唤师技能、旧符文、天赋共用简单详情,不做版本内差异以外的历史追溯。

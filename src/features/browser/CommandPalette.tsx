@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { matches, useCatalog } from "@/lib/assets";
+import { matches, useCatalog, useTFTSeasons } from "@/lib/assets";
+import { cn } from "@/lib/utils";
 import { useUI, type Section, type Selection } from "@/store/ui";
 import { AssetImage } from "./AssetImage";
-import { championFullName, skinKey, tftKey } from "./sections";
+import type { Catalog } from "@/mygo";
+import { championFullName, effectiveSeason, seasonFilter, seasonOptions, skinKey, TFT_FACE_CROP, tftKey } from "./sections";
 
 interface Hit {
   key: string;
@@ -12,6 +14,8 @@ interface Hit {
   icon: string;
   section: Section;
   selection: Selection;
+  /** 云顶条目本身,跳转时判断是否在当前赛季 */
+  tft?: Catalog["tft"][number];
 }
 
 const LIMIT = 8;
@@ -25,6 +29,7 @@ export function CommandPalette() {
   const select = useUI((s) => s.select);
   const setFilters = useUI((s) => s.setFilters);
   const { data: cat } = useCatalog(version);
+  const seasons = useTFTSeasons(version, open);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -70,6 +75,7 @@ export function CommandPalette() {
         icon: e.icon,
         section: "tft",
         selection: { kind: "tft", id: tftKey(e), category: e.category },
+        tft: e,
       }));
     return [
       { title: "英雄", hits: champions },
@@ -82,7 +88,11 @@ export function CommandPalette() {
 
   const go = (h: Hit) => {
     setSection(h.section);
-    if (h.selection?.kind === "tft") setFilters({ tftCategory: h.selection.category, tftSet: "" });
+    if (h.selection?.kind === "tft" && h.tft && cat) {
+      // 赛季各分类共用;目标不在当前赛季时切到全部,免得网格里找不到它
+      const season = effectiveSeason(useUI.getState().filters.tftSet, seasonOptions(cat, seasons.data));
+      setFilters(seasonFilter(season, seasons.data)(h.tft) ? { tftCategory: h.selection.category } : { tftCategory: h.selection.category, tftSet: "" });
+    }
     select(h.selection);
     setOpen(false);
     setQuery("");
@@ -99,7 +109,11 @@ export function CommandPalette() {
             <CommandGroup key={g.title} heading={g.title}>
               {g.hits.map((h) => (
                 <CommandItem key={h.key} value={h.key} onSelect={() => go(h)} className="gap-2.5">
-                  <AssetImage path={h.icon} alt={h.title} className="size-7 shrink-0 rounded-sm" />
+                  <AssetImage
+                    path={h.icon}
+                    alt={h.title}
+                    className={cn("size-7 shrink-0 rounded-sm", h.selection?.kind === "tft" && h.selection.category === "弈子" && TFT_FACE_CROP)}
+                  />
                   <span className="truncate">{h.title}</span>
                   <span className="ml-auto truncate text-xs text-muted-foreground">{h.subtitle}</span>
                 </CommandItem>
