@@ -222,3 +222,37 @@ func TestTFTDetailLive(t *testing.T) {
 		t.Error("invalid patch should fail")
 	}
 }
+
+func TestTFTUnitsLive(t *testing.T) {
+	s := liveStore(t)
+	ctx := context.Background()
+	lib := NewTFTLibrary(s)
+	units, err := lib.Units(ctx, "16.21")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat, err := NewCatalogs(s).Get(ctx, "16.21.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	total, found := 0, 0
+	for _, e := range cat.TFT {
+		if e.Category == "弈子" {
+			total++
+			if _, ok := units[e.ID]; ok {
+				found++
+			}
+		}
+	}
+	if total == 0 || found*100 < total*95 {
+		t.Errorf("only %d / %d units have filter data", found, total)
+	}
+	ahri, ok := units["TFT15_Ahri"]
+	detail, _ := lib.Detail(ctx, "16.21", "弈子", "TFT15_Ahri")
+	if !ok || ahri.Role != "APCaster" || ahri.Range != 4 || detail == nil || !slices.Equal(ahri.Traits, detail.Traits) {
+		t.Errorf("ahri = %+v, detail traits = %v", ahri, detail)
+	}
+	if _, err := lib.Units(ctx, "../x"); err == nil {
+		t.Error("invalid patch should fail")
+	}
+}

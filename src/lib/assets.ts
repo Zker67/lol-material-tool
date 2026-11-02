@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { isMyGo, runtime } from "mygo-runtime";
-import { Assets, Tasks, type Catalog, type ChampionArt, type TFTDetail, type TFTSeason } from "../mygo";
+import { Assets, Tasks, type Catalog, type ChampionArt, type TFTDetail, type TFTSeason, type TFTUnit } from "../mygo";
 
 /**
  * 素材路径(如 `ddragon/cdn/16.21.1/img/champion/Ahri.png`)→ 页面可加载的地址。
@@ -87,6 +87,17 @@ export function useTFTSeasons(version: string | null | undefined, enabled = true
   return useQuery({
     queryKey: ["tftSeasons", version],
     queryFn: async () => (await Assets.tftSeasons(version!)) as TFTSeason[],
+    enabled: enabled && !!version,
+    staleTime: Infinity,
+    retry: false,
+  });
+}
+
+/** 某个版本全部弈子的羁绊、定位与攻击距离,用于按条件筛选(与 useTFTDetail 共用同一份数据) */
+export function useTFTUnits(version: string | null | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["tftUnits", version],
+    queryFn: async () => (await Assets.tftUnits(version!)) as Record<string, TFTUnit>,
     enabled: enabled && !!version,
     staleTime: Infinity,
     retry: false,

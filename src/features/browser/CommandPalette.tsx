@@ -92,6 +92,8 @@ export function CommandPalette() {
       // 赛季各分类共用;目标不在当前赛季时切到全部,免得网格里找不到它
       const season = effectiveSeason(useUI.getState().filters.tftSet, seasonOptions(cat, seasons.data));
       setFilters(seasonFilter(season, seasons.data)(h.tft) ? { tftCategory: h.selection.category } : { tftCategory: h.selection.category, tftSet: "" });
+      // 弈子的费用、羁绊等条件也可能把它筛掉,一并清除
+      if (h.selection.category === "弈子") setFilters({ tftCost: "", tftTrait: "", tftRole: "", tftDamage: "", tftRange: "" });
     }
     select(h.selection);
     setOpen(false);

@@ -1,4 +1,4 @@
-import type { Catalog, Champion, ExportItem, Skin, TFTSeason } from "@/mygo";
+import type { Catalog, Champion, ExportItem, Skin, TFTSeason, TFTUnit } from "@/mygo";
 import { diffEntries, matches, type DiffState } from "@/lib/assets";
 import type { DiffFilter } from "@/store/ui";
 import type { GridEntry, GridGroup } from "./AssetGrid";
@@ -46,6 +46,12 @@ export interface Filters {
   championView: ChampionView;
   /** 皮肤显示时只看某位英雄(英雄 ID),空为全部 */
   skinChampion: string;
+  /** 弈子筛选,空为不限:费用("1"–"5",other 为其他费用)、羁绊名称、定位、伤害类型、攻击距离(格) */
+  tftCost: string;
+  tftTrait: string;
+  tftRole: string;
+  tftDamage: string;
+  tftRange: string;
 }
 
 export type ChampionView = "champions" | "skins";
@@ -58,6 +64,11 @@ export const DEFAULT_FILTERS: Filters = {
   tftSet: null,
   championView: "champions",
   skinChampion: "",
+  tftCost: "",
+  tftTrait: "",
+  tftRole: "",
+  tftDamage: "",
+  tftRange: "",
 };
 
 export const championFullName = (c: Champion) => `${c.name} ${c.title}`.trim();
@@ -292,6 +303,54 @@ export const tftKey = (e: Catalog["tft"][number]) => `${e.category}:${e.id || e.
 /** 分赛季的云顶分类;小小英雄、棋盘皮肤、地区传送门不分赛季 */
 export const TFT_SEASONAL = new Set(["弈子", "羁绊", "装备", "海克斯强化"]);
 
+/** 弈子定位(CommunityDragon role 去掉 AD / AP 前缀后)的中文名 */
+export const TFT_ROLE_LABELS: Record<string, string> = {
+  Tank: "坦克",
+  Fighter: "战士",
+  Caster: "法师",
+  Carry: "射手",
+  Reaper: "刺客",
+  Specialist: "特殊",
+};
+
+/** 弈子伤害类型(role 前缀)的中文名 */
+export const TFT_DAMAGE_LABELS: Record<string, string> = { AD: "物理", AP: "魔法" };
+
+/** 拆开原始定位:APCaster → { damage: "AP", role: "Caster" };没有 AD / AP 前缀时 damage 为空 */
+export function splitTftRole(raw: string): { damage: string; role: string } {
+  const m = /^(AD|AP)(.+)$/.exec(raw);
+  if (m) return { damage: m[1], role: m[2] };
+  return { damage: "", role: raw.replace(/^H(?=[A-Z])/, "") };
+}
+
+export const tftCostKey = (cost: number) => (cost >= 1 && cost <= 5 ? String(cost) : "other");
+
+export const hasTftUnitFilter = (f: Filters) => !!(f.tftCost || f.tftTrait || f.tftRole || f.tftDamage || f.tftRange);
+
+/**
+ * 弈子按费用、羁绊、定位、伤害类型、攻击距离筛选;羁绊按名称比较(同名羁绊在不同赛季 ID 不同)。
+ * units 还没读到时只按费用筛选;读到后没有资料的弈子在设了其他条件时不显示。
+ */
+export function tftUnitFilter(
+  f: Filters,
+  units: Record<string, TFTUnit> | undefined,
+  traitNames: Map<string, string>,
+): (e: Catalog["tft"][number]) => boolean {
+  const facet = f.tftTrait || f.tftRole || f.tftDamage || f.tftRange;
+  return (e) => {
+    if (f.tftCost && tftCostKey(e.cost) !== f.tftCost) return false;
+    if (!facet || !units) return true;
+    const u = units[e.id];
+    if (!u) return false;
+    if (f.tftTrait && !(u.traits ?? []).some((id) => traitNames.get(id) === f.tftTrait)) return false;
+    const { damage, role } = splitTftRole(u.role);
+    if (f.tftRole && role !== f.tftRole) return false;
+    if (f.tftDamage && damage !== f.tftDamage) return false;
+    if (f.tftRange && String(u.range) !== f.tftRange) return false;
+    return true;
+  };
+}
+
 /** 赛季条上的一项 */
 export interface SeasonOption {
   number: string;
@@ -344,9 +403,10 @@ export function tftSection(
   q: string,
   f: Filters,
   df: DiffFilter,
-  inSeason: (e: Catalog["tft"][number]) => boolean,
+  /** 赛季筛选,弈子另含按条件筛选 */
+  keep: (e: Catalog["tft"][number]) => boolean,
 ): SectionResult {
-  const pick = (c: Catalog) => c.tft.filter((e) => e.category === f.tftCategory && inSeason(e) && matches(q, e.name, e.id));
+  const pick = (c: Catalog) => c.tft.filter((e) => e.category === f.tftCategory && keep(e) && matches(q, e.name, e.id));
   const toEntry = (e: Catalog["tft"][number]): GridEntry => ({
     id: tftKey(e),
     title: e.name,

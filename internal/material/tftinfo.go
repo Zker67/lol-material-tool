@@ -94,6 +94,17 @@ type tftDetails map[string]map[string]*TFTDetail
 type tftData struct {
 	details tftDetails
 	seasons []TFTSeason
+	units   map[string]TFTUnit
+}
+
+// TFTUnit 是弈子用于筛选的信息,键与 TFTEntry.ID 对应。
+type TFTUnit struct {
+	// Traits 是羁绊 ID。
+	Traits []string `json:"traits"`
+	// Role 是原始定位,如 ADTank、APCaster(前缀 AD / AP 为伤害类型);没有时为空。
+	Role string `json:"role"`
+	// Range 是攻击距离(格);没有时为 0。
+	Range float64 `json:"range"`
 }
 
 // TFTSeason 是一个赛季,以及该赛季实际用到的条目(CommunityDragon setData 中的主模式 TFTSet{n})。
@@ -146,6 +157,15 @@ func (l *TFTLibrary) Detail(ctx context.Context, patch, category, id string) (*T
 		return nil, err
 	}
 	return data.details[category][id], nil
+}
+
+// Units 返回某个补丁下全部弈子的羁绊、定位与攻击距离,供按条件筛选。
+func (l *TFTLibrary) Units(ctx context.Context, patch string) (map[string]TFTUnit, error) {
+	data, err := l.load(ctx, patch)
+	if err != nil {
+		return nil, err
+	}
+	return data.units, nil
 }
 
 // Seasons 返回某个补丁下的赛季(从新到旧)。
@@ -210,6 +230,8 @@ type cdTFTChampion struct {
 	} `json:"ability"`
 	Stats  map[string]any `json:"stats"`
 	Traits []string       `json:"traits"`
+	// Role 是定位,如 ADTank、APCaster;新赛季刚上线时常常缺失。
+	Role string `json:"role"`
 }
 
 type cdTFTTrait struct {
@@ -296,8 +318,9 @@ func loadTFTData(ctx context.Context, s *Store, patch string) (*tftData, error) 
 		sets = append(sets, root.Sets[k])
 	}
 	sets = append(sets, root.SetData...)
+	units := map[string]TFTUnit{}
 	for _, set := range sets {
-		addTFTSet(data, patch, set)
+		addTFTSet(data, units, patch, set)
 	}
 
 	// 外观:读不到只是不显示描述
@@ -320,7 +343,7 @@ func loadTFTData(ctx context.Context, s *Store, patch string) (*tftData, error) 
 	if err != nil {
 		return nil, err
 	}
-	return &tftData{details: data, seasons: seasons}, nil
+	return &tftData{details: data, seasons: seasons, units: units}, nil
 }
 
 // loadTFTSeasons 从 setData 取各赛季主模式(mutator 为 TFTSet{n})的条目名单,
@@ -373,7 +396,7 @@ func loadTFTSeasons(ctx context.Context, s *Store, plugin string, setData []cdTF
 }
 
 // addTFTSet 登记一个赛季(或模式)的弈子与羁绊;已登记过的 apiName 不覆盖。
-func addTFTSet(data tftDetails, patch string, set cdTFTSet) {
+func addTFTSet(data tftDetails, units map[string]TFTUnit, patch string, set cdTFTSet) {
 	traitID := map[string]string{} // 弈子数据里的羁绊是名称,按本赛季的羁绊表换成 ID
 	for _, t := range set.Traits {
 		traitID[t.Name] = t.APIName
@@ -391,6 +414,8 @@ func addTFTSet(data tftDetails, patch string, set cdTFTSet) {
 			continue
 		}
 		d := &TFTDetail{Patch: patch, Stats: championStats(c.Stats), Traits: traits, Splash: cdragonGameAsset(patch, c.Icon)}
+		reach, _ := numberOf(c.Stats["range"])
+		units[c.APIName] = TFTUnit{Traits: traits, Role: c.Role, Range: reach}
 		if a := c.Ability; a != nil {
 			vars := map[string][]float64{}
 			for _, v := range a.Variables {

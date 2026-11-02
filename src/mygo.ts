@@ -300,6 +300,16 @@ export interface TFTStat {
   stars: string[];
 }
 
+/** TFTUnit 是弈子用于筛选的信息,键与 TFTEntry.ID 对应。 */
+export interface TFTUnit {
+  /** Traits 是羁绊 ID。 */
+  traits: string[];
+  /** Role 是原始定位,如 ADTank、APCaster(前缀 AD / AP 为伤害类型);没有时为空。 */
+  role: string;
+  /** Range 是攻击距离(格);没有时为 0。 */
+  range: number;
+}
+
 // ---- Services ----
 
 /**
@@ -390,6 +400,10 @@ export const Assets = {
   /** TFTSeasons 返回某个版本下的云顶赛季(从新到旧):中文名、是否为默认赛季,以及各分类在该赛季用到的条目(CommunityDragon)。 */
   tftSeasons(version: string): Promise<TFTSeason[]> {
     return call("Assets.TFTSeasons", version);
+  },
+  /** TFTUnits 返回某个版本下全部弈子的羁绊、定位与攻击距离,用于按条件筛选(CommunityDragon)。 */
+  tftUnits(version: string): Promise<Record<string, TFTUnit>> {
+    return call("Assets.TFTUnits", version);
   },
 } as const;
 

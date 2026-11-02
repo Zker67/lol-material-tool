@@ -181,6 +181,18 @@ func (a *Assets) TFTSeasons(ctx context.Context, version string) ([]material.TFT
 	return a.tft.Seasons(ctx, patch)
 }
 
+// TFTUnits 返回某个版本下全部弈子的羁绊、定位与攻击距离,用于按条件筛选(CommunityDragon)。
+func (a *Assets) TFTUnits(ctx context.Context, version string) (map[string]material.TFTUnit, error) {
+	patch, err := a.HistoryPatch(ctx, version)
+	if err != nil {
+		return nil, err
+	}
+	if patch == "" {
+		return nil, errors.New("CommunityDragon 没有该版本的数据")
+	}
+	return a.tft.Units(ctx, patch)
+}
+
 // SaveAs 让用户选择位置,把一项素材另存过去;取消时返回 ""。
 func (a *Assets) SaveAs(ctx context.Context, path string, suggestedName string) (string, error) {
 	local, err := a.store.Get(ctx, path)

@@ -4,12 +4,11 @@ import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { HextechProgressBar } from "@/components/HextechProgressBar";
 import { cancelTask, errorMessage, type TaskProgress } from "@/lib/api";
-import { useCatalog, useTFTSeasons, useVersions } from "@/lib/assets";
+import { useCatalog, useTFTSeasons, useTFTUnits, useVersions } from "@/lib/assets";
 import { ENTER } from "@/lib/motion";
 import { useUI, type DiffFilter, type Section } from "@/store/ui";
 import { AssetGrid, SimpleGrid, type GridEntry, type GridGroup } from "./AssetGrid";
@@ -17,8 +16,10 @@ import { DetailPanel, exportTo } from "./DetailPanel";
 import { VersionPicker } from "./VersionPicker";
 import type { Champion } from "@/mygo";
 import { ChampionPicker } from "./ChampionPicker";
+import { OptionPicker } from "./OptionPicker";
 import { RuneStyleCard } from "./RuneTree";
 import { SeasonBar } from "./SeasonBar";
+import { TftUnitFilters } from "./TftUnitFilters";
 import {
   ITEM_TAGS,
   ROLE_LABELS,
@@ -33,6 +34,7 @@ import {
   skinsSection,
   summonersSection,
   tftSection,
+  tftUnitFilter,
   type ChampionView,
   type RuneGroup,
   type SectionResult,
@@ -99,19 +101,12 @@ function SectionFilters({ section, champions }: { section: Section; champions: C
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
           只看商店装备 <Switch checked={filters.storeOnly} onCheckedChange={(v) => setFilters({ storeOnly: v })} className="scale-90" />
         </label>
-        <Select value={filters.itemTag || "all"} onValueChange={(v) => setFilters({ itemTag: v === "all" ? "" : v })}>
-          <SelectTrigger size="sm" className="h-8 w-28 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全部属性</SelectItem>
-            {Object.entries(ITEM_TAGS).map(([k, label]) => (
-              <SelectItem key={k} value={k}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <OptionPicker
+          label="属性"
+          value={filters.itemTag}
+          options={Object.entries(ITEM_TAGS).map(([value, label]) => ({ value, label }))}
+          onChange={(v) => setFilters({ itemTag: v })}
+        />
       </div>
     );
   return null;
@@ -193,6 +188,16 @@ export function Browser({ progress }: { progress: TaskProgress | null }) {
   const seasonOpts = useMemo(() => (cat ? seasonOptions(cat, seasons.data) : []), [cat, seasons.data]);
   const season = effectiveSeason(filters.tftSet, seasonOpts);
   const inSeason = useMemo(() => seasonFilter(season, seasons.data), [season, seasons.data]);
+  // 弈子另按费用、羁绊、定位等条件筛选;条件的选项取自当前赛季的弈子
+  const unitView = section === "tft" && filters.tftCategory === "弈子";
+  const units = useTFTUnits(version, unitView);
+  const traitNames = useMemo(() => new Map((cat?.tft ?? []).filter((e) => e.category === "羁绊").map((e) => [e.id, e.name])), [cat]);
+  const seasonUnits = useMemo(() => (cat && unitView ? cat.tft.filter((e) => e.category === "弈子" && inSeason(e)) : []), [cat, unitView, inSeason]);
+  const keepTft = useMemo(() => {
+    if (!unitView) return inSeason;
+    const ok = tftUnitFilter(filters, units.data, traitNames);
+    return (e: Parameters<typeof inSeason>[0]) => inSeason(e) && ok(e);
+  }, [unitView, inSeason, filters, units.data, traitNames]);
   const seasonal = TFT_SEASONAL.has(filters.tftCategory);
   const view: View = section === "champions" && filters.championView === "skins" ? "skins" : section;
   const tftAspect = section === "tft" ? TFT_ASPECT[filters.tftCategory] : undefined;
@@ -215,10 +220,10 @@ export function Browser({ progress }: { progress: TaskProgress | null }) {
       case "summoners":
         return summonersSection(cat, cmp, search, diffFilter);
       case "tft":
-        return tftSection(cat, cmp, search, filters, diffFilter, inSeason);
+        return tftSection(cat, cmp, search, filters, diffFilter, keepTft);
     }
     return null;
-  }, [cat, cmp, view, search, filters, diffFilter, inSeason]);
+  }, [cat, cmp, view, search, filters, diffFilter, keepTft]);
 
   // 选中的条目对应到网格里的 ID
   const selectedId =
@@ -265,7 +270,7 @@ export function Browser({ progress }: { progress: TaskProgress | null }) {
           <SeasonBar
             options={seasonOpts}
             value={season}
-            onChange={(s) => setFilters({ tftSet: s })}
+            onChange={(s) => setFilters({ tftSet: s, tftTrait: "" })}
             category={filters.tftCategory}
             seasonal={seasonal}
             loading={seasons.isLoading}
@@ -304,6 +309,7 @@ export function Browser({ progress }: { progress: TaskProgress | null }) {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <SectionFilters section={section} champions={cat?.champions ?? []} />
+          {unitView && seasonUnits.length > 0 && <TftUnitFilters entries={seasonUnits} units={units.data} traitNames={traitNames} />}
           {compareVersion && (
             <div className="flex items-center gap-2">
               <FilterLabel>{`对比 ${compareVersion}`}</FilterLabel>
