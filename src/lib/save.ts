@@ -46,8 +46,8 @@ function savedToast(dest: string) {
   toast.success("已保存", { description: dest, action: { label: "打开文件夹", onClick: () => Desktop.showInFolder(dest) } });
 }
 
-/** 另存为:弹出系统保存对话框,默认放在固定保存位置 */
-export async function saveAssetAs(path: string, name: string) {
+/** 弹出系统保存对话框;只在首次保存选「这次手动选择」时使用 */
+async function saveAssetAs(path: string, name: string) {
   try {
     const dest = await Assets.saveAs(path, name);
     if (dest) savedToast(dest);

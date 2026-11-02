@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from "react";
-import { FolderDown, Loader2, Search, X } from "lucide-react";
+import { FolderDown, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -174,11 +173,9 @@ export function Browser({ progress }: { progress: TaskProgress | null }) {
   const diffFilter = useUI((s) => s.diffFilter);
   const setDiffFilter = useUI((s) => s.setDiffFilter);
   const search = useUI((s) => s.search);
-  const setSearch = useUI((s) => s.setSearch);
   const filters = useUI((s) => s.filters);
   const selection = useUI((s) => s.selection);
   const select = useUI((s) => s.select);
-  const setPaletteOpen = useUI((s) => s.setPaletteOpen);
 
   const versions = useVersions();
   useEffect(() => {
@@ -278,31 +275,14 @@ export function Browser({ progress }: { progress: TaskProgress | null }) {
             onChange={setCompareVersion}
             disabledVersion={version}
           />
-          <div className="relative ml-auto w-56">
-            <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索名称 / 称号 / 英文名" className="h-8 pr-14 pl-8 text-xs" />
-            {search ? (
-              <button type="button" onClick={() => setSearch("")} className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                <X className="size-3.5" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setPaletteOpen(true)}
-                className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded-sm border border-border px-1 font-mono text-[10px] text-muted-foreground hover:text-foreground"
-              >
-                Ctrl K
-              </button>
-            )}
-          </div>
           {exporting ? (
-            <Button size="sm" variant="destructive" className="h-8 gap-1.5" onClick={() => cancelTask()}>
+            <Button size="sm" variant="destructive" className="ml-auto h-8 gap-1.5" onClick={() => cancelTask()}>
               <X className="size-3.5" /> 取消导出
             </Button>
           ) : (
             <Button
               size="sm"
-              className="h-8 gap-1.5"
+              className="ml-auto h-8 gap-1.5"
               disabled={!result || result.exportItems.length === 0}
               onClick={() => result && exportTo(`素材导出-${version}-${exportTitle}`, result.exportItems)}
             >

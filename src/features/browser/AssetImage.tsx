@@ -1,9 +1,9 @@
 import { useState, type CSSProperties } from "react";
-import { Copy, Download, FolderInput, ImageOff, Type } from "lucide-react";
+import { Copy, Download, ImageOff, Type } from "lucide-react";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { cn } from "@/lib/utils";
 import { assetURL } from "@/lib/assets";
-import { copyImage, copyText, saveAsset, saveAssetAs } from "@/lib/save";
+import { copyImage, copyText, saveAsset } from "@/lib/save";
 
 /** 素材图:加载中显示占位,失败(官方已不提供)显示提示图标;右键可复制、保存 */
 export function AssetImage({
@@ -66,9 +66,6 @@ export function AssetImage({
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => saveAsset(path, name)}>
           <Download /> 保存
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => saveAssetAs(path, name)}>
-          <FolderInput /> 另存为…
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem onSelect={() => copyText(name)}>

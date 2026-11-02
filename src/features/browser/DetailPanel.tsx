@@ -1,22 +1,22 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Copy, Download, FolderDown, FolderInput, History, ImageDown, Maximize2, MousePointerClick, Sparkles, X } from "lucide-react";
+import { Copy, Download, FolderDown, History, ImageDown, Maximize2, MousePointerClick, Sparkles, X } from "lucide-react";
 import type { Catalog, Champion, ExportItem, Item, Skin, SkinArt } from "@/mygo";
 import { Desktop, Tasks } from "@/mygo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { errorMessage, pickDirectory } from "@/lib/api";
 import { useChampionArt, useHistoryPatch } from "@/lib/assets";
-import { copyImage, copyText, ensureSaveDir, saveAsset, saveAssetAs } from "@/lib/save";
+import { copyImage, copyText, ensureSaveDir, saveAsset } from "@/lib/save";
 import { cn } from "@/lib/utils";
 import { useUI, type DetailTab } from "@/store/ui";
 import { AssetImage } from "./AssetImage";
 import { plainText, RichText } from "./RichText";
+import { Lightbox, type Preview } from "./Lightbox";
 import { RuneTree } from "./RuneTree";
 import { championExportItems, championFullName, itemTagLabel, ROLE_LABELS, skinKey, tftKey, type RuneTreeRow } from "./sections";
 
@@ -38,7 +38,7 @@ function GlassButton({ label, onClick, children }: { label: string; onClick: () 
   );
 }
 
-/** 一张素材的常用操作:复制图片、保存到固定位置、另存为 */
+/** 一张素材的常用操作:复制图片、保存到固定位置 */
 function AssetActions({ path, name }: { path: string; name: string }) {
   if (!path) return null;
   return (
@@ -48,9 +48,6 @@ function AssetActions({ path, name }: { path: string; name: string }) {
       </GlassButton>
       <GlassButton label="保存" onClick={() => saveAsset(path, name)}>
         <ImageDown className="size-3.5" />
-      </GlassButton>
-      <GlassButton label="另存为…" onClick={() => saveAssetAs(path, name)}>
-        <FolderInput className="size-3.5" />
       </GlassButton>
     </div>
   );
@@ -96,39 +93,6 @@ function Section({ title, children, extra }: { title: string; children: ReactNod
       </div>
       {children}
     </section>
-  );
-}
-
-interface Preview {
-  path: string;
-  title: string;
-  fileName: string;
-}
-
-/** 点击看大图,大图里可复制、保存 */
-function Lightbox({ preview, open, onOpenChange }: { preview: Preview | null; open: boolean; onOpenChange: (o: boolean) => void }) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[min(92vw,1400px)] border-hex-gold-dark p-2 sm:max-w-[min(92vw,1400px)]">
-        <AssetImage path={preview?.path} alt={preview?.fileName ?? ""} fit="contain" className="h-[76vh] w-full bg-hex-bg" />
-        <div className="flex items-center justify-between gap-2 px-1">
-          <DialogTitle className="truncate text-sm font-normal text-hex-gold-light select-text">{preview?.title}</DialogTitle>
-          {preview?.path && (
-            <div className="flex shrink-0 gap-1.5">
-              <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => copyImage(preview.path)}>
-                <Copy className="size-3.5" /> 复制图片
-              </Button>
-              <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => saveAssetAs(preview.path, preview.fileName)}>
-                <FolderInput className="size-3.5" /> 另存为…
-              </Button>
-              <Button size="sm" className="h-7 gap-1 text-xs" onClick={() => saveAsset(preview.path, preview.fileName)}>
-                <Download className="size-3.5" /> 保存
-              </Button>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }
 
@@ -380,11 +344,12 @@ function ChampionDetail({ catalog, champion, skinId }: { catalog: Catalog; champ
   const baseSkins = champion.skins.filter((s) => s.parent == null);
   const skin = baseSkins.find((s) => skinKey(champion, s) === skinId) ?? baseSkins[0];
   const [variant, setVariant] = useState<Variant>("splash");
-  const [preview, setPreview] = useState<Preview | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const showPreview = (p: Preview) => {
-    setPreview(p);
-    setPreviewOpen(true);
+  // 大图预览:一组图 + 当前是第几张,方向键在这一组里切换
+  const [gallery, setGallery] = useState<{ items: Preview[]; index: number }>({ items: [], index: 0 });
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const openGallery = (items: Preview[], index: number) => {
+    setGallery({ items, index: Math.max(0, index) });
+    setGalleryOpen(true);
   };
 
   const patch = useHistoryPatch(catalog.version);
@@ -393,13 +358,30 @@ function ChampionDetail({ catalog, champion, skinId }: { catalog: Catalog; champ
   const artById = useMemo(() => new Map((art.data?.skins ?? []).map((s) => [s.id, s])), [art.data]);
   const skinArt: SkinArt | undefined = skin ? artById.get(skin.id) : undefined;
 
-  const officialPath = skin ? { splash: skin.splash, centered: skin.centered, loading: skin.loading, tile: skin.tile }[variant] : "";
-  const historyPath = skinArt
-    ? { splash: skinArt.uncentered || skinArt.splash, centered: skinArt.splash, loading: skinArt.loadScreen, tile: skinArt.tile }[variant]
-    : "";
-  const path = historyArt ? historyPath : officialPath;
+  // 某个皮肤在当前图片类型下的图:官方最新 / 该版本历史原画
+  const officialPathOf = (s: Skin) => ({ splash: s.splash, centered: s.centered, loading: s.loading, tile: s.tile })[variant];
+  const historyPathOf = (s: Skin) => {
+    const a = artById.get(s.id);
+    return a ? { splash: a.uncentered || a.splash, centered: a.splash, loading: a.loadScreen, tile: a.tile }[variant] : "";
+  };
+  const pathOf = (s: Skin) => (historyArt ? historyPathOf(s) : officialPathOf(s));
+  const tileOf = (s: Skin) => (historyArt ? artById.get(s.id)?.tile || s.tile : s.tile);
+  const historyPath = skin ? historyPathOf(skin) : "";
+  const path = skin ? pathOf(skin) : "";
   const current = VARIANTS.find((v) => v.key === variant)!;
   const imageName = `${skin?.name ?? championFullName(champion)} ${current.label}.jpg`;
+  // 没有官方名称的炫彩按序号命名,不显示内部编号
+  const chromaItems: Preview[] = (skinArt?.chromas ?? []).map((ch, i) => {
+    const name = ch.name || `${skin?.name ?? ""} 炫彩 ${i + 1}`;
+    return { path: ch.image, title: name, fileName: `${name}.png` };
+  });
+
+  /** 从原画打开大图:在该英雄所有皮肤的同类图之间切换 */
+  const openArt = () => {
+    const shown = baseSkins.filter((s) => pathOf(s));
+    const items = shown.map((s) => ({ path: pathOf(s), title: s.name, fileName: `${s.name} ${current.label}.jpg`, thumb: tileOf(s) }));
+    openGallery(items, skin ? shown.indexOf(skin) : 0);
+  };
 
   let artNote = "官方原画只有最新版本";
   if (historyArt) {
@@ -456,7 +438,7 @@ function ChampionDetail({ catalog, champion, skinId }: { catalog: Catalog; champ
       <TabsContent value="assets" className="space-y-5">
         {/* 原画查看器:图片 + 决定显示哪张图的条件(图片类型、历史原画、皮肤)放在一起 */}
         <div className="overflow-hidden rounded-lg border border-hex-gold-dark/40 bg-hex-bg-2/40">
-          <ArtStage path={path} alt={imageName} onOpen={() => showPreview({ path, title: skin?.name ?? championFullName(champion), fileName: imageName })}>
+          <ArtStage path={path} alt={imageName} onOpen={openArt}>
             {historyArt && (
               <span className="absolute top-2 left-2 max-w-[70%] truncate rounded-full bg-black/55 px-2 py-0.5 text-[10px] text-hex-gold-light backdrop-blur">
                 {artNote}
@@ -491,7 +473,7 @@ function ChampionDetail({ catalog, champion, skinId }: { catalog: Catalog; champ
               champion={champion}
               skins={baseSkins}
               current={skin}
-              tileOf={(s) => (historyArt ? artById.get(s.id)?.tile || s.tile : s.tile)}
+              tileOf={tileOf}
             />
           </div>
         </div>
@@ -507,14 +489,13 @@ function ChampionDetail({ catalog, champion, skinId }: { catalog: Catalog; champ
             ) : (
               <div className="grid grid-cols-5 gap-1.5">
                 {(skinArt?.chromas ?? []).map((ch, i) => {
-                  // 没有官方名称的炫彩按序号命名,不显示内部编号
-                  const name = ch.name || `${skin.name} 炫彩 ${i + 1}`;
+                  const name = chromaItems[i].title;
                   return (
                     <Tooltip key={ch.id}>
                       <TooltipTrigger asChild>
                         <button
                           type="button"
-                          onClick={() => ch.image && showPreview({ path: ch.image, title: name, fileName: `${name}.png` })}
+                          onClick={() => ch.image && openGallery(chromaItems, i)}
                           className="group relative overflow-hidden rounded-md bg-hex-bg-2/60 ring-1 ring-white/10 transition-all hover:ring-hex-gold/60"
                         >
                           <AssetImage path={ch.image} alt={name} fit="contain" className="aspect-square w-full bg-transparent" />
@@ -535,7 +516,13 @@ function ChampionDetail({ catalog, champion, skinId }: { catalog: Catalog; champ
           </Section>
         )}
 
-        <Lightbox preview={preview} open={previewOpen} onOpenChange={setPreviewOpen} />
+        <Lightbox
+          items={gallery.items}
+          index={gallery.index}
+          onIndexChange={(index) => setGallery((g) => ({ ...g, index }))}
+          open={galleryOpen}
+          onOpenChange={setGalleryOpen}
+        />
       </TabsContent>
 
       <TabsContent value="info" className="space-y-5">
@@ -566,7 +553,7 @@ function ChampionDetail({ catalog, champion, skinId }: { catalog: Catalog; champ
                 <div key={sp.slot + sp.name} className="group/spell flex items-start gap-2.5 rounded-md border border-transparent p-1.5 hover:border-border">
                   <button
                     type="button"
-                    title="另存为"
+                    title="保存"
                     onClick={() => saveAsset(sp.icon, `${sp.slot === "P" ? "被动技能" : `${sp.slot}技能`} ${sp.name}.png`)}
                     className="group/icon relative shrink-0"
                   >
@@ -643,9 +630,6 @@ function SimpleDetail({
             </Button>
             <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" onClick={() => saveAsset(icon, fileName)}>
               <Download className="size-3.5" /> 保存
-            </Button>
-            <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" onClick={() => saveAssetAs(icon, fileName)}>
-              <FolderInput className="size-3.5" /> 另存为…
             </Button>
           </div>
         </div>

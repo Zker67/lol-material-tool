@@ -17,13 +17,16 @@ import {
   Link2,
   Map as MapIcon,
   PawPrint,
+  Search,
   Sparkles,
   Swords,
   Wand2,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { Assets } from "@/mygo";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { errorMessage, openPath, pickDirectory } from "@/lib/api";
 import { loadSaveDir, setSaveDir, useSaveDir } from "@/lib/save";
@@ -131,6 +134,58 @@ function CacheButton() {
   );
 }
 
+/** Ctrl K 小标签,点击打开跨分类搜索 */
+function PaletteHint({ className }: { className?: string }) {
+  const setPaletteOpen = useUI((s) => s.setPaletteOpen);
+  return (
+    <button
+      type="button"
+      onClick={() => setPaletteOpen(true)}
+      className={cn("rounded-sm border border-border px-1 font-mono text-[10px] text-muted-foreground hover:text-foreground", className)}
+    >
+      Ctrl K
+    </button>
+  );
+}
+
+/** 侧边栏顶部的搜索:浏览分区里筛选当前分类;整包工具页没有可筛选的内容,点击打开跨分类搜索 */
+function SidebarSearch({ label }: { label?: string }) {
+  const search = useUI((s) => s.search);
+  const setSearch = useUI((s) => s.setSearch);
+  const setPaletteOpen = useUI((s) => s.setPaletteOpen);
+
+  if (!label)
+    return (
+      <button
+        type="button"
+        onClick={() => setPaletteOpen(true)}
+        className="flex h-8 w-full items-center gap-2 rounded-md border border-input bg-input/30 pr-1.5 pl-2.5 text-xs text-muted-foreground hover:text-foreground"
+      >
+        <Search className="size-3.5" />
+        搜索素材
+        <span className="ml-auto rounded-sm border border-border px-1 font-mono text-[10px]">Ctrl K</span>
+      </button>
+    );
+  return (
+    <div className="relative">
+      <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+      <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`搜索${label}`} className="h-8 pr-12 pl-8 text-xs" />
+      {search ? (
+        <button
+          type="button"
+          aria-label="清空搜索"
+          onClick={() => setSearch("")}
+          className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+        >
+          <X className="size-3.5" />
+        </button>
+      ) : (
+        <PaletteHint className="absolute top-1/2 right-1.5 -translate-y-1/2" />
+      )}
+    </div>
+  );
+}
+
 /** 固定保存位置:保存和导出的素材都放这里,不再询问 */
 function SaveDirButton() {
   const dir = useSaveDir((s) => s.dir);
@@ -210,7 +265,11 @@ export function Sidebar() {
           <div className="text-[10px] text-muted-foreground">获取 · 浏览 · 整理</div>
         </div>
       </div>
-      <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-2">
+      <div className="px-2 pb-1">
+        <SidebarSearch label={current.items.find(isActive)?.label} />
+      </div>
+      {/* 只有素材浏览的分区列表滚动,整包工具固定在底部 */}
+      <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
         <div className="space-y-0.5">
           <GroupTitle>素材浏览</GroupTitle>
           {/* 英雄联盟 / 云顶之弈 切换,下面只列当前游戏的分区 */}
@@ -235,14 +294,14 @@ export function Sidebar() {
             <NavButton key={item.tftCategory ?? item.key} item={item} active={isActive(item)} onClick={() => go(item)} />
           ))}
         </div>
-        <div className="space-y-0.5">
-          <GroupTitle>整包工具</GroupTitle>
-          {TOOLS.map((item) => (
-            <NavButton key={item.key} item={item} active={isActive(item)} onClick={() => go(item)} />
-          ))}
-        </div>
       </nav>
-      <div className="space-y-1 border-t border-sidebar-border px-2 py-2">
+      <div className="shrink-0 space-y-0.5 border-t border-sidebar-border px-2 pt-3 pb-2">
+        <GroupTitle>整包工具</GroupTitle>
+        {TOOLS.map((item) => (
+          <NavButton key={item.key} item={item} active={isActive(item)} onClick={() => go(item)} />
+        ))}
+      </div>
+      <div className="shrink-0 space-y-1 border-t border-sidebar-border px-2 py-2">
         <SaveDirButton />
         <CacheButton />
         <div className="px-2.5 text-[10px] text-muted-foreground/70">by Bilibili 仓小杰 · 完全免费</div>
